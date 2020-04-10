@@ -18,11 +18,12 @@ Repo based on [jwyang/faster-rcnn.pytorch](https://github.com/jwyang/faster-rcnn
 
 ## Usage:
 1. clone repo
-2. make `data` directory in repo root
-3. make `pretrained_model` directory in data dir
-4. [download](https://www.dropbox.com/s/s3brpk0bdq60nyb/vgg16_caffe.pth?dl=0) pretrained VGG16 model and put to step 3 folder
-5. prepare dataset as described [here](https://github.com/rbgirshick/py-faster-rcnn#beyond-the-demo-installation-for-training-and-testing-models)
-6. run `python run.py -h`
+2. go to `lib` folder and run `python setup.py develop`
+3. make `data` directory in repo root
+4. make `pretrained_model` directory in data dir
+5. [download](https://www.dropbox.com/s/s3brpk0bdq60nyb/vgg16_caffe.pth?dl=0) pretrained VGG16 model and put to step 3 folder
+6. prepare dataset as described [here](https://github.com/rbgirshick/py-faster-rcnn#beyond-the-demo-installation-for-training-and-testing-models)
+7. run `python run.py -h`
 
 -------------------------
 - Used PyTorch 1.4.0
