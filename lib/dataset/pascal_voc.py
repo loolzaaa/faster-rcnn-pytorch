@@ -1,4 +1,5 @@
 import os
+import re
 import pickle
 import uuid
 import cv2 as cv
@@ -48,7 +49,16 @@ class PascalVoc(ImageDataset):
                                       self._image_set + '.txt')
         assert os.path.exists(image_set_file), 'Path does not exist: {}'.format(image_set_file)
         with open(image_set_file) as f:
-            image_index = [id.strip() for id in f.readlines()]
+            image_index = []
+            for id in f.readlines():
+                _tmp = re.sub(r'\s+', ' ', id).strip().split(' ')
+                if len(_tmp) == 1:
+                    image_index.append(_tmp[0])
+                elif len(_tmp) > 1:
+                    if _tmp[1] == '0' or _tmp[1] == '1': image_index.append(_tmp[0])
+                else:
+                    raise ValueError('Unknown string format: %s' % (id))
+
         return image_index
         
     def _load_image_data(self):

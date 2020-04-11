@@ -22,7 +22,7 @@ def get_dataset(dataset_sequence, add_params, mode='train'):
         print('Loaded Detection dataset.')
     elif dataset_name == 'voc':
         year = dataset_sequence.split('_')[1]
-        image_set = dataset_sequence.split('_')[2]
+        image_set = dataset_sequence[(len(dataset_name) + len(year) + 2):]
         devkit_path = None
         for param in add_params:
             if param.startswith('devkit_path='):
