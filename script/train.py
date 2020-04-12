@@ -9,7 +9,8 @@ from torch.utils.data import DataLoader
 from torch.optim import SGD, Adam
 from torch.optim.lr_scheduler import StepLR
 from dataset.collate import collate_train
-from model.faster_rcnn import FasterRCNN
+from model.vgg16 import VGG16
+from model.resnet import Resnet
 from utils.net_utils import clip_gradient
 
 def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step, 
@@ -46,11 +47,16 @@ def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step,
 
     model_path = os.path.join(cfg.DATA_DIR, 'pretrained_model', '{}.pth'.format(net))
     if net == 'vgg16':
-        faster_rcnn = FasterRCNN(dataset.num_classes, class_agnostic=class_agnostic, 
+        faster_rcnn = VGG16(dataset.num_classes, class_agnostic=class_agnostic, 
                                  pretrained=True, model_path=model_path)
+    elif net.startswith('resnet'):
+        num_layers = net[6:]
+        faster_rcnn = Resnet(num_layers, dataset.num_classes, class_agnostic=class_agnostic, 
+                             pretrained=True, model_path=model_path)
     else:
         raise ValueError(Back.RED + 'Network "{}" is not defined!'.format(net))
 
+    faster_rcnn.init()
     faster_rcnn.to(device)
 
     params = []

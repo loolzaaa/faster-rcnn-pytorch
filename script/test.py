@@ -11,7 +11,8 @@ from colorama import Back, Fore
 from config import cfg
 from torch.utils.data import DataLoader
 from dataset.collate import collate_test
-from model.faster_rcnn import FasterRCNN
+from model.vgg16 import VGG16
+from model.resnet import Resnet
 from utils.bbox_transform import bbox_transform_inv, clip_boxes
 from utils.nms import nms
 from utils.net_utils import vis_detections
@@ -38,10 +39,14 @@ def test(dataset, net, class_agnostic, load_dir, session, epoch, vis, add_params
     print(Back.CYAN + Fore.BLACK + 'Output directory: %s' % (output_dir))
 
     if net == 'vgg16':
-        faster_rcnn = FasterRCNN(dataset.num_classes, class_agnostic=class_agnostic)
+        faster_rcnn = VGG16(dataset.num_classes, class_agnostic=class_agnostic)
+    elif net.startswith('resnet'):
+        num_layers = net[6:]
+        faster_rcnn = Resnet(num_layers, dataset.num_classes, class_agnostic=class_agnostic)
     else:
         raise ValueError(Back.RED + 'Network "{}" is not defined!'.format(net))
 
+    faster_rcnn.init()
     faster_rcnn.to(device)
 
     model_path = os.path.join(cfg.DATA_DIR, load_dir, net, ds_name, 

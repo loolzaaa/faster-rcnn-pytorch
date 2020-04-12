@@ -9,21 +9,16 @@ from model.rpn.proposal_target_layer import _ProposalTargetLayer
 from utils.net_utils import _smooth_l1_loss
 
 class FasterRCNN(nn.Module):
-    def __init__(self, num_classes, class_agnostic=True, pretrained=False, model_path=None):
-        super(FasterRCNN, self).__init__()
+    def __init__(self, num_classes, class_agnostic, out_depth):
+        super().__init__()
         self.n_classes = num_classes
         self.class_agnostic = class_agnostic
-        self.pretrained = pretrained
-        self.model_path = model_path
         
         # define rpn
-        self.RCNN_rpn = _RPN(512)
+        self.RCNN_rpn = _RPN(out_depth)
         self.RCNN_proposal_target = _ProposalTargetLayer()
         
         self.RCNN_roi_pool = ROIPool(1.0/16.0, cfg.GENERAL.POOLING_SIZE)
-        
-        self._init_modules()
-        self._init_weights()
         
     def forward(self, im_data, im_info, gt_boxes):
         if self.training:
@@ -53,7 +48,7 @@ class FasterRCNN(nn.Module):
         pooled_feat = self.RCNN_roi_pool(base_feature, rois.view(-1,5))
         
         # feed pooled features to top model
-        pooled_feat = self.RCNN_top(pooled_feat.view(pooled_feat.size(0), -1))
+        pooled_feat = self._feed_pooled_feature_to_top(pooled_feat)
         
         # compute bbox offset
         bbox_pred = self.RCNN_bbox_pred(pooled_feat)
@@ -82,32 +77,12 @@ class FasterRCNN(nn.Module):
         bbox_pred = bbox_pred.view(batch_size, rois.size(1), -1)
 
         return rois, cls_prob, bbox_pred, rpn_loss_cls, rpn_loss_bbox, RCNN_loss_cls, RCNN_loss_bbox, rois_label
+
+    def _prepare_pooled_feature(self, pooled_feature):
+        raise NotImplementedError
         
     def _init_modules(self):
-        backbone = torchvision.models.vgg16()
-        if self.pretrained:
-            print("Loading pretrained weights from %s..." % (self.model_path))
-            state_dict = torch.load(self.model_path)
-            backbone.load_state_dict({k:v for k,v in state_dict.items() if k in backbone.state_dict()})
-            print('Done.')
-        
-        backbone.classifier = nn.Sequential(*list(backbone.classifier._modules.values())[:-1])
-        
-        # not using the last maxpool layer
-        self.RCNN_base = nn.Sequential(*list(backbone.features._modules.values())[:-1])
-        
-        # Fix the layers before conv3 for VGG16:
-        for layer in range(10):
-            for p in self.RCNN_base[layer].parameters(): p.requires_grad = False
-
-        self.RCNN_top = backbone.classifier
-
-        self.RCNN_cls_score = nn.Linear(4096, self.n_classes)
-        
-        if self.class_agnostic:
-            self.RCNN_bbox_pred = nn.Linear(4096, 4)
-        else:
-            self.RCNN_bbox_pred = nn.Linear(4096, 4 * self.n_classes)
+        raise NotImplementedError
         
     def _init_weights(self):
         def normal_init(m, mean, stddev):
@@ -119,3 +94,7 @@ class FasterRCNN(nn.Module):
         normal_init(self.RCNN_rpn.RPN_bbox_pred, 0, 0.01)
         normal_init(self.RCNN_cls_score, 0, 0.01)
         normal_init(self.RCNN_bbox_pred, 0, 0.001)
+
+    def init(self):
+        self._init_modules()
+        self._init_weights()

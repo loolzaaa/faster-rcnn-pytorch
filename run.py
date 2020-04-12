@@ -14,8 +14,10 @@ if lib_path not in sys.path:
     sys.path.insert(0, lib_path)
 
 def add_common_parser_arguments(parser):
-    parser.add_argument('-n', '--net', default='vgg16', choices=['vgg16'],
-                        help='backbone for faster rcnn network')
+    parser.add_argument('-n', '--net', default='vgg16', 
+                        help='backbone for faster rcnn network',
+                        choices=['vgg16', 'resnet18', 'resnet34', 'resnet50', 
+                                 'resnet101', 'resnet152'])
     parser.add_argument('-d', '--dataset', default='voc_2007_trainval', 
                         help='dataset (classes) to load')
     parser.add_argument('-s', '--session', default=1, type=int, 
