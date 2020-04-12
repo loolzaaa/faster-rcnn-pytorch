@@ -9,6 +9,7 @@ from __future__ import print_function
 
 import xml.etree.ElementTree as ET
 import os
+import re
 import pickle
 import numpy as np
 
@@ -102,8 +103,15 @@ def voc_eval(detpath,
   cachefile = os.path.join(cachedir, '%s_annots.pkl' % imagesetfile)
   # read list of images
   with open(imagesetfile, 'r') as f:
-    lines = f.readlines()
-  imagenames = [x.strip() for x in lines]
+    imagenames = []
+    for id in f.readlines():
+      _tmp = re.sub(r'\s+', ' ', id).strip().split(' ')
+      if len(_tmp) == 1:
+        imagenames.append(_tmp[0])
+      elif len(_tmp) > 1:
+        if _tmp[1] == '0' or _tmp[1] == '1': imagenames.append(_tmp[0])
+      else:
+        raise ValueError('Unknown string format: %s' % (id))
 
   if not os.path.isfile(cachefile):
     # load annotations
