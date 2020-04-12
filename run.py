@@ -55,8 +55,8 @@ parser_train.add_argument('-di', '--display_interval', type=int, default=100,
                           help='number of iterations to display')
 parser_train.add_argument('-sd', '--save_dir', default='models',
                           help='directory to save models')
-parser_train.add_argument('--vis', action='store_true',
-                         help='visualize training process on plotter')
+parser_train.add_argument('--vis-off', dest='vis_off', action='store_true',
+                         help='turn off visualize training process on plotter')
 parser_train.add_argument('-ap', '--add_params', nargs=argparse.REMAINDER,
                           default=[], help='additional parameters')
 
@@ -127,7 +127,7 @@ if __name__ == "__main__":
             resume=args.resume, class_agnostic=args.class_agnostic, 
             total_epoch=args.total_epoch, display_interval=args.display_interval, 
             session=args.session, epoch=args.epoch, save_dir=args.save_dir, 
-            vis=args.vis, add_params=args.add_params)
+            vis_off=args.vis_off, add_params=args.add_params)
     elif args.mode == 'test':
         test(dataset=args.dataset, net=args.net, class_agnostic=args.class_agnostic,
         load_dir=args.load_dir, session=args.session, epoch=args.epoch,

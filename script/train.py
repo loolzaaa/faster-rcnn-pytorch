@@ -15,7 +15,7 @@ from utils.net_utils import clip_gradient
 
 def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step, 
           lr_decay_gamma, resume, class_agnostic, total_epoch, display_interval, 
-          session, epoch, save_dir, vis, add_params):
+          session, epoch, save_dir, vis_off, add_params):
     device = torch.device('cuda:0') if cfg.CUDA else torch.device('cpu')
     print(Back.CYAN + Fore.BLACK + 'Current device: %s' % (str(device).upper()))
 
@@ -95,7 +95,7 @@ def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step,
 
     faster_rcnn.train()
 
-    if vis:
+    if not vis_off:
         from visualize.plotter import Plotter
         plotter = Plotter()
 
@@ -140,7 +140,7 @@ def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step,
                 print('rpn_cls: %.4f, rpn_box: %.4f, rcnn_cls: %.4f, rcnn_box %.4f' \
                       % (loss_rpn_cls, loss_rpn_bbox, loss_rcnn_cls, loss_rcnn_bbox))
 
-                if vis:
+                if not vis_off:
                     plotter_data = {'session': session,
                                     'current_epoch': current_epoch,
                                     'total_epoch': total_epoch,
@@ -165,10 +165,10 @@ def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step,
                       'model': faster_rcnn.state_dict(),
                       'optimizer': optimizer.state_dict()}
         torch.save(checkpoint, save_path)
-        if vis:
+        if not vis_off:
             plotter.send('save', save_path[:-4])
         print(Back.WHITE + Fore.BLACK + 'Model saved: %s' % (save_path))
 
-    if vis:
+    if not vis_off:
         plotter.send('close', None)
     print(Back.GREEN + Fore.BLACK + 'Train finished.')
