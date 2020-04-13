@@ -8,6 +8,7 @@ from config import cfg
 from script.train import train
 from script.test import test
 from script.detect import detect
+from utils.net_utils import parse_additional_params
 
 lib_path = os.path.join(os.path.dirname(__file__), 'lib')
 if lib_path not in sys.path:
@@ -124,6 +125,12 @@ if __name__ == "__main__":
     print(Back.WHITE + Fore.BLACK + 'Called with args:')
     print(args)
 
+    add_params, err_params = parse_additional_params(args.add_params)
+    if len(err_params) > 0:
+        print(Back.RED + 'ERROR! Cannot parse next additional parameters:')
+        for p in err_params: print('\t' + p)
+        exit()
+
     if args.mode == 'train':
         train(dataset=args.dataset, net=args.net, batch_size=args.batch_size, 
             learning_rate=args.learning_rate, optimizer=args.optimizer, 
@@ -131,14 +138,14 @@ if __name__ == "__main__":
             pretrain=args.pretrain, resume=args.resume, class_agnostic=args.class_agnostic, 
             total_epoch=args.total_epoch, display_interval=args.display_interval, 
             session=args.session, epoch=args.epoch, save_dir=args.save_dir, 
-            vis_off=args.vis_off, add_params=args.add_params)
+            vis_off=args.vis_off, add_params=add_params)
     elif args.mode == 'test':
         test(dataset=args.dataset, net=args.net, class_agnostic=args.class_agnostic,
         load_dir=args.load_dir, session=args.session, epoch=args.epoch,
-        vis=args.vis, add_params=args.add_params)
+        vis=args.vis, add_params=add_params)
     else:
         detect(dataset=args.dataset, net=args.net, class_agnostic=args.class_agnostic,
         load_dir=args.load_dir, session=args.session, epoch=args.epoch,
-        vis=args.vis, image_dir=args.image_dir, add_params=args.add_params)
+        vis=args.vis, image_dir=args.image_dir, add_params=add_params)
 
     deinit()

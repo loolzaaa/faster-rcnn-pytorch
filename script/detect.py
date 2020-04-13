@@ -32,11 +32,13 @@ def detect(dataset, net, class_agnostic, load_dir, session, epoch, vis,
     image_dir = os.path.join(cfg.DATA_DIR, image_dir)
 
     classes, ds_name = dataset_factory.get_classes(dataset)
-    set_params = {'image_path': image_dir, 'classes': classes}
-    dataset, _ = dataset_factory.get_dataset('detect', set_params, mode='test')
+    add_params['image_path'] = image_dir
+    add_params['classes'] = classes
+    dataset, _ = dataset_factory.get_dataset('detect', add_params, mode='test')
     loader = DataLoader(dataset, batch_size=1, shuffle=False, 
                         collate_fn=collate_test)
 
+    if 'data_path' in add_params: cfg.DATA_DIR = add_params['data_path']
     output_dir = os.path.abspath(os.path.join(image_dir, 'result'))
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)

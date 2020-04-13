@@ -2,6 +2,38 @@ import torch
 import cv2 as cv
 import numpy as np
 
+def parse_additional_params(params):
+    assert params is not None, 'Additional parameter list cannot be None'
+    add_params = {}
+    err_params = []
+    exclude_list = ['true', 'false']
+    if len(params) == 0:
+        return add_params, err_params
+    else:
+        for param in params:
+            pair = param.split('=')
+            if len(pair) != 2:
+                err_params.append(param)
+            else:
+                key = pair[0]
+                if len(key) == 0 or key.lower() in exclude_list:
+                    err_params.append(param)
+                    continue
+
+                value = pair[1]
+                if len(key) == 0:
+                    add_params[key] = value
+                    continue
+                
+                try:
+                    value = float(value)
+                except ValueError:
+                    if value.lower() == 'true': value = True
+                    elif value.lower() == 'false': value = False
+                add_params[key] = value
+    
+    return add_params, err_params
+
 def _smooth_l1_loss(bbox_pred, bbox_targets, bbox_inside_weights, bbox_outside_weights, sigma=1.0, dim=[1]):
     '''
     Smooth L1 Loss a.k.a. Huber Loss

@@ -40,6 +40,7 @@ def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step,
     loader = DataLoader(dataset, batch_size=cfg.TRAIN.BATCH_SIZE, 
                         shuffle=True, collate_fn=collate_train)
 
+    if 'data_path' in add_params: cfg.DATA_DIR = add_params['data_path']
     output_dir = os.path.join(cfg.DATA_DIR, save_dir, net, ds_name)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)

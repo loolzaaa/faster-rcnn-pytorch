@@ -12,21 +12,18 @@ def get_classes(dataset_sequence):
     else:
         raise NotImplementedError(Back.RED + 'Not implement for "{:s}" dataset!'.format(dataset_name))
 
-def get_dataset(dataset_sequence, add_params, mode='train'):
+def get_dataset(dataset_sequence, params, mode='train'):
     print(Back.WHITE + Fore.BLACK + 'Loading image dataset...')
     dataset_name = dataset_sequence.split('_')[0]
     if dataset_name == 'detect':
-        dataset = detection_set.DetectionSet(image_path=add_params['image_path'],
-                                             classes=add_params['classes'])
+        dataset = detection_set.DetectionSet(image_path=params['image_path'],
+                                             classes=params['classes'])
         short_name = 'det_set'
         print('Loaded Detection dataset.')
     elif dataset_name == 'voc':
         year = dataset_sequence.split('_')[1]
         image_set = dataset_sequence[(len(dataset_name) + len(year) + 2):]
-        devkit_path = None
-        for param in add_params:
-            if param.startswith('devkit_path='):
-                devkit_path = param.split('=')[1]
+        devkit_path = params['devkit_path'] if 'devkit_path' in params else None
         if devkit_path is None:
             print(Back.YELLOW + Fore.BLACK + 'WARNING! ' 
                   + 'Cannot find "devkit_path" in additional parameters. ' 

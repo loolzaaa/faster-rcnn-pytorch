@@ -33,6 +33,7 @@ def test(dataset, net, class_agnostic, load_dir, session, epoch, vis, add_params
     loader = DataLoader(dataset, batch_size=1, shuffle=False, 
                         collate_fn=collate_test)
 
+    if 'data_path' in add_params: cfg.DATA_DIR = add_params['data_path']
     output_dir = os.path.join(cfg.DATA_DIR, 'output', net, ds_name)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
