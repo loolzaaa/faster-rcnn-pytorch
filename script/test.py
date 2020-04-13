@@ -14,8 +14,8 @@ from dataset.collate import collate_test
 from model.vgg16 import VGG16
 from model.resnet import Resnet
 from utils.bbox_transform import bbox_transform_inv, clip_boxes
-from utils.nms import nms
 from utils.net_utils import vis_detections
+from _C import nms
 
 def test(dataset, net, class_agnostic, load_dir, session, epoch, vis, add_params):
     device = torch.device('cuda:0') if cfg.CUDA else torch.device('cpu')

@@ -4,7 +4,7 @@ import numpy as np
 from config import cfg
 from model.rpn.anchor_generate import generate
 from utils.bbox_transform import bbox_transform_inv, clip_boxes
-from utils.nms import nms
+from _C import nms
 
 class _ProposalLayer(nn.Module):
     def __init__(self, anchors_per_point):
