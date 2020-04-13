@@ -25,8 +25,8 @@ Repo based on [jwyang/faster-rcnn.pytorch](https://github.com/jwyang/faster-rcnn
 6. prepare dataset as described [here](https://github.com/rbgirshick/py-faster-rcnn#beyond-the-demo-installation-for-training-and-testing-models)
 7. run `python run.py -h`
 
--------------------------
-- Used PyTorch 1.4.0
-- Used Python 3.8.0
-- Used CUDA 10
-- Used library: pytorch, numpy, opencv, easydict, matplotlib, colorama.
+## Prerequisites:
+- Python 3.8.0
+- PyTorch 1.4.0
+- CUDA 10
+- Other libraries in [this gist (Conda environment)](https://gist.github.com/loolzaaa/fdbc406d281db9dc0a723536a41679d6)
