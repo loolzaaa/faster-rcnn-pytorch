@@ -36,7 +36,8 @@ def get_image_blob(img):
     if len(im.shape) == 2:
         im = im[:, :, np.newaxis]
         im = np.concatenate((im, im, im), axis=2)
-    im = im[:, :, ::-1] # BGR -> RGB
+    # TODO: Make work with this more flexible (color mode, mean, std)
+    #im = im[:, :, ::-1] # BGR -> RGB
     if img['flipped']:
         im = im[:, ::-1, :]
     im = im.astype(np.float32, copy=True)
