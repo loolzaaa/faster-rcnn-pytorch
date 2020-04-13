@@ -14,8 +14,8 @@ from model.resnet import Resnet
 from utils.net_utils import clip_gradient
 
 def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step, 
-          lr_decay_gamma, resume, class_agnostic, total_epoch, display_interval, 
-          session, epoch, save_dir, vis_off, add_params):
+          lr_decay_gamma, pretrain, resume, class_agnostic, total_epoch, 
+          display_interval, session, epoch, save_dir, vis_off, add_params):
     device = torch.device('cuda:0') if cfg.CUDA else torch.device('cpu')
     print(Back.CYAN + Fore.BLACK + 'Current device: %s' % (str(device).upper()))
 
@@ -80,13 +80,14 @@ def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step,
 
     start_epoch = 1
 
-    if resume:
+    if pretrain or resume:
         model_path = os.path.join(output_dir, 'frcnn_{}_{}.pth'.format(session, epoch))
         print(Back.WHITE + Fore.BLACK + 'Loading checkpoint %s...' % (model_path))
         checkpoint = torch.load(model_path, map_location=device)
-        start_epoch = checkpoint['epoch']
         faster_rcnn.load_state_dict(checkpoint['model'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        if resume:
+            start_epoch = checkpoint['epoch']
+            optimizer.load_state_dict(checkpoint['optimizer'])
         print('Done.')
 
     # Decays the learning rate of each parameter group by gamma every step_size epochs.

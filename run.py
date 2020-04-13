@@ -47,8 +47,12 @@ parser_train.add_argument('-lrds', '--lr_decay_step', type=int, default=None,
                           help='learning rate decay step, in epochs')
 parser_train.add_argument('-lrdg', '--lr_decay_gamma', type=float, default=None,
                           help='learning rate decay ratio')
+parser_train.add_argument('-p', '--pretrain', action='store_true', 
+                          help='load weigths from checkpoint or not'
+                              +'Need to set SESSION and EPOCH')
 parser_train.add_argument('-r', '--resume', action='store_true', 
-                          help='resume training from checkpoint or not')
+                          help='resume training from checkpoint or not' 
+                              +'Need to set SESSION and EPOCH')
 parser_train.add_argument('-te', '--total_epoch', type=int, default=20,
                           help='total number of epochs for training')
 parser_train.add_argument('-di', '--display_interval', type=int, default=100,
@@ -124,7 +128,7 @@ if __name__ == "__main__":
         train(dataset=args.dataset, net=args.net, batch_size=args.batch_size, 
             learning_rate=args.learning_rate, optimizer=args.optimizer, 
             lr_decay_step=args.lr_decay_step, lr_decay_gamma=args.lr_decay_gamma, 
-            resume=args.resume, class_agnostic=args.class_agnostic, 
+            pretrain=args.pretrain, resume=args.resume, class_agnostic=args.class_agnostic, 
             total_epoch=args.total_epoch, display_interval=args.display_interval, 
             session=args.session, epoch=args.epoch, save_dir=args.save_dir, 
             vis_off=args.vis_off, add_params=args.add_params)
