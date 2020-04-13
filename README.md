@@ -1,9 +1,6 @@
 # A PyTorch implementation of Faster R-CNN
 Repo based on [jwyang/faster-rcnn.pytorch](https://github.com/jwyang/faster-rcnn.pytorch/tree/pytorch-1.0) (PyTorch 1.0 version)
 
-### ***CUDA version - OK***
-### ***CPU version - Need test***
-
 ## Tutorial:
 [Blog](http://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns) by [ankur6ue](https://github.com/ankur6ue)
 
@@ -11,9 +8,7 @@ Repo based on [jwyang/faster-rcnn.pytorch](https://github.com/jwyang/faster-rcnn
 1. Fix README
 2. Some cleanup code
 3. Add some dataset support to net
-4. Add more ROI layers
-5. add requirements file
-6. ...
+4. ...
 
 ## Usage:
 1. clone repo
