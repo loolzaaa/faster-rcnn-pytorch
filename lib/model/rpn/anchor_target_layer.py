@@ -18,7 +18,7 @@ class _AnchorTargetLayer(nn.Module):
         
         # Generate default anchors with shape: shifts X base_anchors X 4
         anchors = generate(feature_h=height, feature_w=width)
-        anchors = anchors.view(-1, 4).type_as(gt_boxes) #Surprise! type_as change device of tensor too.    
+        anchors = anchors.view(-1, 4).to(gt_boxes)
         
         total_anchors = int(anchors.size(0))
         
@@ -69,7 +69,7 @@ class _AnchorTargetLayer(nn.Module):
             # subsample positive labels if we have too many
             if sum_fg[i] > num_fg:
                 fg_inds = torch.nonzero(labels[i] == 1).view(-1)
-                rand_num = torch.randperm(fg_inds.size(0)).type_as(gt_boxes).long()
+                rand_num = torch.randperm(fg_inds.size(0)).to(gt_boxes.device, torch.long)
                 disable_inds = fg_inds[rand_num[:fg_inds.size(0) - num_fg]]
                 labels[i][disable_inds] = -1
 
@@ -78,13 +78,13 @@ class _AnchorTargetLayer(nn.Module):
             # subsample negative labels if we have too many
             if sum_bg[i] > num_bg:
                 bg_inds = torch.nonzero(labels[i] == 0).view(-1)
-                rand_num = torch.randperm(bg_inds.size(0)).type_as(gt_boxes).long()
+                rand_num = torch.randperm(bg_inds.size(0)).to(gt_boxes.device, torch.long)
                 disable_inds = bg_inds[rand_num[:bg_inds.size(0) - num_bg]]
                 labels[i][disable_inds] = -1
                 
         offset = torch.arange(0, batch_size) * gt_boxes.size(1)
         
-        argmax_overlaps = argmax_overlaps + offset.view(batch_size, 1).type_as(argmax_overlaps)
+        argmax_overlaps = argmax_overlaps + offset.view(batch_size, 1).to(argmax_overlaps)
         bbox_targets = self._compute_targets_batch(anchors, gt_boxes.view(-1,5)[argmax_overlaps.view(-1), :].view(batch_size, -1, 5))
         
         # use a single value instead of 4 values for easy index.
@@ -131,10 +131,10 @@ class _AnchorTargetLayer(nn.Module):
         size count) """
 
         if data.dim() == 2:
-            ret = torch.Tensor(batch_size, count).fill_(fill).type_as(data)
+            ret = data.new_full((batch_size, count), fill)
             ret[:, inds] = data
         else:
-            ret = torch.Tensor(batch_size, count, data.size(2)).fill_(fill).type_as(data)
+            ret = data.new_full((batch_size, count, data.size(2)), fill)
             ret[:, inds,:] = data
         return ret
         

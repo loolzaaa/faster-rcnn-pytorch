@@ -12,10 +12,9 @@ class _ProposalTargetLayer(nn.Module):
         self.BBOX_INSIDE_WEIGHTS = torch.Tensor((1.0, 1.0, 1.0, 1.0))
         
     def forward(self, all_rois, gt_boxes):
-        # type_as move tensors to cpu or gpu too
-        self.BBOX_NORMALIZE_MEANS = self.BBOX_NORMALIZE_MEANS.type_as(gt_boxes)
-        self.BBOX_NORMALIZE_STDS = self.BBOX_NORMALIZE_STDS.type_as(gt_boxes)
-        self.BBOX_INSIDE_WEIGHTS = self.BBOX_INSIDE_WEIGHTS.type_as(gt_boxes)
+        self.BBOX_NORMALIZE_MEANS = self.BBOX_NORMALIZE_MEANS.to(gt_boxes)
+        self.BBOX_NORMALIZE_STDS = self.BBOX_NORMALIZE_STDS.to(gt_boxes)
+        self.BBOX_INSIDE_WEIGHTS = self.BBOX_INSIDE_WEIGHTS.to(gt_boxes)
         
         gt_boxes_append = gt_boxes.new_zeros((gt_boxes.size()))
         gt_boxes_append[:, :, 1:5] =  gt_boxes[:, :, :4]
@@ -47,7 +46,7 @@ class _ProposalTargetLayer(nn.Module):
         batch_size = overlaps.size(0)
         
         offset = torch.arange(0, batch_size) * gt_boxes.size(1)
-        offset = offset.view(-1, 1).type_as(gt_assignment) + gt_assignment
+        offset = offset.view(-1, 1).to(gt_assignment) + gt_assignment
         
         labels = gt_boxes[:,:,4].contiguous().view(-1)[(offset.view(-1),)].view(batch_size, -1)
         
@@ -67,25 +66,25 @@ class _ProposalTargetLayer(nn.Module):
                 # sampling fg
                 fg_rois_per_this_image = min(fg_rois_per_image, fg_num_rois)
                 
-                rand_num = torch.randperm(fg_num_rois).type_as(gt_boxes).long()
+                rand_num = torch.randperm(fg_num_rois).to(gt_boxes).long()
                 fg_inds = fg_inds[rand_num[:fg_rois_per_this_image]]
                 
                 # sampling bg
                 bg_rois_per_this_image = rois_per_image - fg_rois_per_this_image
                 
-                rand_num = torch.floor(torch.rand(bg_rois_per_this_image).type_as(gt_boxes)
+                rand_num = torch.floor(torch.rand(bg_rois_per_this_image).to(gt_boxes)
                                         * bg_num_rois).long()
                 bg_inds = bg_inds[rand_num]                
             elif fg_num_rois > 0 and bg_num_rois == 0:
                 # sampling fg
-                rand_num = torch.floor(torch.rand(rois_per_image).type_as(gt_boxes)
+                rand_num = torch.floor(torch.rand(rois_per_image).to(gt_boxes)
                                         * fg_num_rois).long()
                 fg_inds = fg_inds[rand_num]
                 fg_rois_per_this_image = rois_per_image
                 bg_rois_per_this_image = 0
             elif bg_num_rois > 0 and fg_num_rois == 0:
                 # sampling bg
-                rand_num = torch.floor(torch.rand(rois_per_image).type_as(gt_boxes)
+                rand_num = torch.floor(torch.rand(rois_per_image).to(gt_boxes)
                                         * bg_num_rois).long()
                 bg_inds = bg_inds[rand_num]
                 bg_rois_per_this_image = rois_per_image

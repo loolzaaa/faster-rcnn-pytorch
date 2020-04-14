@@ -27,7 +27,7 @@ class _ProposalLayer(nn.Module):
         
         # Generate default anchors with shape: shifts X base_anchors X 4
         anchors = generate(feature_h=scores.size(2), feature_w=scores.size(3))
-        anchors = anchors.view(1, -1, 4).expand(batch_size, -1, 4).type_as(bbox_deltas) #Surprise! type_as change device of tensor too.
+        anchors = anchors.view(1, -1, 4).expand(batch_size, -1, 4).to(bbox_deltas)
         
         # Transpose and reshape predicted bbox transformations to get them
         # into the same order as the anchors:
