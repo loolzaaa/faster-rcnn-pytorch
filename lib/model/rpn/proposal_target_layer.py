@@ -143,8 +143,8 @@ class _ProposalTargetLayer(nn.Module):
         batch_size = labels_batch.size(0)
         rois_per_image = labels_batch.size(1)
         clss = labels_batch
-        bbox_targets = bbox_target_data.new(batch_size, rois_per_image, 4).zero_()
-        bbox_inside_weights = bbox_target_data.new(bbox_targets.size()).zero_()
+        bbox_targets = bbox_target_data.new_zeros((batch_size, rois_per_image, 4))
+        bbox_inside_weights = bbox_target_data.new_zeros(bbox_targets.size())
 
         for b in range(batch_size):
             # assert clss[b].sum() > 0

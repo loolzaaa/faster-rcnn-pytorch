@@ -39,9 +39,9 @@ def _make_anchors(ws, hs, x_ctr, y_ctr):
     ws.unsqueeze_(1)
     hs.unsqueeze_(1)
     return torch.cat((x_ctr - 0.5 * (ws - 1),
-                         y_ctr - 0.5 * (hs - 1),
-                         x_ctr + 0.5 * (ws - 1),
-                         y_ctr + 0.5 * (hs - 1)), 1)
+                      y_ctr - 0.5 * (hs - 1),
+                      x_ctr + 0.5 * (ws - 1),
+                      y_ctr + 0.5 * (hs - 1)), 1)
     
 def _ratio_enum(anchor, ratios):
     w, h, x_ctr, y_ctr = _anchor_params(anchor)

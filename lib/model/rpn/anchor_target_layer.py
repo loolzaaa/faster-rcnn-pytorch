@@ -32,12 +32,9 @@ class _AnchorTargetLayer(nn.Module):
         anchors = anchors[idx_inside, :]
         
         # label: 1 is positive, 0 is negative, -1 is dont care
-        #labels = gt_boxes.new_full((batch_size, idx_inside.size(0)), -1)
-        #bbox_inside_weights = gt_boxes.new_zeros((batch_size, idx_inside.size(0)))
-        #bbox_outside_weights = gt_boxes.new_zeros((batch_size, idx_inside.size(0)))
-        labels = gt_boxes.new(batch_size, idx_inside.size(0)).fill_(-1)
-        bbox_inside_weights = gt_boxes.new(batch_size, idx_inside.size(0)).zero_()
-        bbox_outside_weights = gt_boxes.new(batch_size, idx_inside.size(0)).zero_()
+        labels = gt_boxes.new_full((batch_size, idx_inside.size(0)), -1)
+        bbox_inside_weights = gt_boxes.new_zeros((batch_size, idx_inside.size(0)))
+        bbox_outside_weights = gt_boxes.new_zeros((batch_size, idx_inside.size(0)))
 
         # Overlaps (IoU) size: batch_size x anchors x gt_boxes
         overlaps = bbox_overlaps_batch(anchors, gt_boxes)
@@ -65,8 +62,8 @@ class _AnchorTargetLayer(nn.Module):
         
         num_fg = int(cfg.TRAIN.RPN_FG_LABELS_FRACTION * cfg.TRAIN.RPN_MAX_LABELS)
 
-        sum_fg = torch.sum((labels == 1).int(), 1)
-        sum_bg = torch.sum((labels == 0).int(), 1)
+        sum_fg = torch.sum((labels == 1).long(), 1)
+        sum_bg = torch.sum((labels == 0).long(), 1)
         
         for i in range(batch_size):
             # subsample positive labels if we have too many
@@ -76,7 +73,7 @@ class _AnchorTargetLayer(nn.Module):
                 disable_inds = fg_inds[rand_num[:fg_inds.size(0) - num_fg]]
                 labels[i][disable_inds] = -1
 
-            num_bg = cfg.TRAIN.RPN_MAX_LABELS - torch.sum((labels == 1).int(), 1)[i]
+            num_bg = cfg.TRAIN.RPN_MAX_LABELS - torch.sum((labels == 1).long(), 1)[i]
 
             # subsample negative labels if we have too many
             if sum_bg[i] > num_bg:
@@ -88,7 +85,6 @@ class _AnchorTargetLayer(nn.Module):
         offset = torch.arange(0, batch_size) * gt_boxes.size(1)
         
         argmax_overlaps = argmax_overlaps + offset.view(batch_size, 1).type_as(argmax_overlaps)
-        #bbox_targets = bbox_transform_batch(anchors, gt_boxes.view(-1,5)[argmax_overlaps.view(-1), :].view(batch_size, -1, 5)[:,:,:4])
         bbox_targets = self._compute_targets_batch(anchors, gt_boxes.view(-1,5)[argmax_overlaps.view(-1), :].view(batch_size, -1, 5))
         
         # use a single value instead of 4 values for easy index.
