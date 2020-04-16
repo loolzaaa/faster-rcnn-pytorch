@@ -41,7 +41,7 @@ class PascalVoc(ImageDataset):
 
     def image_path_at(self, id):
         image_path = os.path.join(self._data_path, 'JPEGImages',
-                                  id + '.jpg')
+                                  str(id) + '.jpg')
         assert os.path.exists(image_path), \
             'Image Path does not exist: {}'.format(image_path)
         return image_path
@@ -102,7 +102,7 @@ class PascalVoc(ImageDataset):
             
         utils.validate_boxes(boxes, width=img_size[1], height=img_size[0])
         return {'index': idx,
-                'id': id,
+                'id': str(id),
                 'path': img_path,
                 'width': img_size[1],
                 'height': img_size[0],

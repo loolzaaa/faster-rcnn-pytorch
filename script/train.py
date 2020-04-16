@@ -46,14 +46,17 @@ def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step,
         os.makedirs(output_dir)
     print(Back.CYAN + Fore.BLACK + 'Output directory: %s' % (output_dir))
 
-    model_path = os.path.join(cfg.DATA_DIR, 'pretrained_model', '{}.pth'.format(net))
+    pretrained = True
+    if 'use_pretrain' in add_params: pretrained = add_params['use_pretrain']
+    model_name = '{}.pth'.format(add_params['model_name'] if 'model_name' in add_params else net)
+    model_path = os.path.join(cfg.DATA_DIR, 'pretrained_model', model_name)
     if net == 'vgg16':
         faster_rcnn = VGG16(dataset.num_classes, class_agnostic=class_agnostic, 
-                                 pretrained=True, model_path=model_path)
+                                 pretrained=pretrained, model_path=model_path)
     elif net.startswith('resnet'):
         num_layers = net[6:]
         faster_rcnn = Resnet(num_layers, dataset.num_classes, class_agnostic=class_agnostic, 
-                             pretrained=True, model_path=model_path)
+                             pretrained=pretrained, model_path=model_path)
     else:
         raise ValueError(Back.RED + 'Network "{}" is not defined!'.format(net))
 

@@ -25,7 +25,6 @@ class COCO(ImageDataset):
             self._class_index = dict(zip(self.classes, range(self.num_classes)))
             self._class_coco_index = dict(zip(self.classes[1:], self._COCO.getCatIds()))
             self._image_index = self._COCO.getImgIds()
-            self._image_data = self._load_image_data()
 
             self._view_map = {
                 'minival2014': 'val2014',  # 5k val2014 subset
@@ -39,6 +38,8 @@ class COCO(ImageDataset):
             self._data_name = (self._view_map[coco_name]
                                if coco_name in self._view_map
                                else coco_name)
+
+            self._image_data = self._load_image_data()
 
             # COCO specific config options
             self.config = {'use_salt': True,
@@ -103,7 +104,7 @@ class COCO(ImageDataset):
 
         utils.validate_boxes(boxes, width=width, height=height)
         return {'index': idx,
-                'id': id,
+                'id': str(id),
                 'path': img_path,
                 'width': width,
                 'height': height,
