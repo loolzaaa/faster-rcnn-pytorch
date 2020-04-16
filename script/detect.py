@@ -31,7 +31,10 @@ def detect(dataset, net, class_agnostic, load_dir, session, epoch, vis,
 
     image_dir = os.path.join(cfg.DATA_DIR, image_dir)
 
-    classes, ds_name = dataset_factory.get_classes(dataset)
+    dataset, ds_name = dataset_factory.get_dataset(dataset, add_params, 
+                                                   mode='test',
+                                                   only_classes=True)
+    classes = dataset.classes
     add_params['image_path'] = image_dir
     add_params['classes'] = classes
     dataset, _ = dataset_factory.get_dataset('detect', add_params, mode='test')

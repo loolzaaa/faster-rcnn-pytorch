@@ -4,11 +4,6 @@ Repo based on [jwyang/faster-rcnn.pytorch](https://github.com/jwyang/faster-rcnn
 ## Tutorial:
 [Blog](http://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns) by [ankur6ue](https://github.com/ankur6ue)
 
-## TODOs:
-1. Fix README
-2. Add some dataset support to net
-3. ...
-
 ## Usage:
 1. clone repo
 2. go to `lib` folder and run `python setup.py develop`

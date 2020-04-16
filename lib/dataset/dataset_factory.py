@@ -1,19 +1,13 @@
 import numpy as np
 from colorama import Back, Fore
 from config import cfg
-from dataset import detection_set, pascal_voc
+from dataset import detection_set
+from dataset.voc.pascal_voc import PascalVoc
+from dataset.coco.coco import COCO
 
-def get_classes(dataset_sequence):
-    dataset_name = dataset_sequence.split('_')[0]
-    if dataset_name == 'voc':
-        year = dataset_sequence.split('_')[1]
-        short_name = dataset_name + '_' + year
-        return pascal_voc.CLASSES, short_name
-    else:
-        raise NotImplementedError(Back.RED + 'Not implement for "{:s}" dataset!'.format(dataset_name))
-
-def get_dataset(dataset_sequence, params, mode='train'):
-    print(Back.WHITE + Fore.BLACK + 'Loading image dataset...')
+def get_dataset(dataset_sequence, params, mode='train', only_classes=False):
+    only_cls_str = 'classes for ' if only_classes else ''
+    print(Back.WHITE + Fore.BLACK + 'Loading {}image dataset...'.format(only_cls_str))
     dataset_name = dataset_sequence.split('_')[0]
     if dataset_name == 'detect':
         dataset = detection_set.DetectionSet(image_path=params['image_path'],
@@ -29,27 +23,40 @@ def get_dataset(dataset_sequence, params, mode='train'):
                   + 'Cannot find "devkit_path" in additional parameters. ' 
                   + 'Try to use default path (VOCdevkit)...')
             devkit_path = 'VOCdevkit'
-        dataset = pascal_voc.PascalVoc(image_set, year, devkit_path)
+        dataset = PascalVoc(image_set, year, devkit_path, only_classes)
         short_name = dataset_name + '_' + year
-        print('Loaded PascalVoc {:s} {:s} dataset.'.format(year, image_set))
+        print('Loaded {}PascalVoc {} {} dataset.'.format(only_cls_str, year, image_set))
+    elif dataset_name == 'coco':
+        year = dataset_sequence.split('_')[1]
+        image_set = dataset_sequence[(len(dataset_name) + len(year) + 2):]
+        data_path = params['data_path'] if 'data_path' in params else None
+        if data_path is None:
+            print(Back.YELLOW + Fore.BLACK + 'WARNING! ' 
+                  + 'Cannot find "data_path" in additional parameters. ' 
+                  + 'Try to use default path (COCO)...')
+            data_path = 'COCO'
+        dataset = COCO(image_set, year, data_path, only_classes)
+        short_name = dataset_name + '_' + year
+        print('Loaded {}COCO {} {} dataset.'.format(only_cls_str, year, image_set))
     else:
-        raise NotImplementedError(Back.RED + 'Not implement for "{:s}" dataset!'.format(dataset_name))
+        raise NotImplementedError(Back.RED + 'Not implement for "{}" dataset!'.format(dataset_name))
 
-    if mode == 'train' and cfg.TRAIN.USE_FLIPPED:
-        print(Back.WHITE + Fore.BLACK + 'Appending horizontally-flipped ' 
-                                      + 'training examples...')
-        dataset = _append_flipped_images(dataset)
+    if not only_classes:
+        if mode == 'train' and cfg.TRAIN.USE_FLIPPED:
+            print(Back.WHITE + Fore.BLACK + 'Appending horizontally-flipped ' 
+                                          + 'training examples...')
+            dataset = _append_flipped_images(dataset)
+            print('Done.')
+
+        print(Back.WHITE + Fore.BLACK + 'Preparing image data...')
+        dataset = _prepare_data(dataset)
         print('Done.')
 
-    print(Back.WHITE + Fore.BLACK + 'Preparing image data...')
-    dataset = _prepare_data(dataset)
-    print('Done.')
-
-    if mode == 'train':
-        print(Back.WHITE + Fore.BLACK + 'Filtering image data ' 
-                                      + '(remove images without boxes)...')
-        dataset = _filter_data(dataset)
-        print('Done.')
+        if mode == 'train':
+            print(Back.WHITE + Fore.BLACK + 'Filtering image data ' 
+                                          + '(remove images without boxes)...')
+            dataset = _filter_data(dataset)
+            print('Done.')
 
     return dataset, short_name
 

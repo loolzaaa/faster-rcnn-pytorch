@@ -5,10 +5,11 @@ import uuid
 import cv2 as cv
 import numpy as np
 import xml.etree.ElementTree as ET
+import dataset.utils as utils
 from dataset.image_dataset import ImageDataset
-from dataset.voc_eval import voc_eval
+from dataset.voc.voc_eval import voc_eval
 
-CLASSES = ('__background__',  # always index 0
+_CLASSES = ('__background__',  # always index 0
            'aeroplane', 'bicycle', 'bird', 'boat',
            'bottle', 'bus', 'car', 'cat', 'chair',
            'cow', 'diningtable', 'dog', 'horse',
@@ -16,7 +17,7 @@ CLASSES = ('__background__',  # always index 0
            'sheep', 'sofa', 'train', 'tvmonitor')
 
 class PascalVoc(ImageDataset):
-    def __init__(self, image_set, year, devkit_path):
+    def __init__(self, image_set, year, devkit_path, only_classes=False):
         ImageDataset.__init__(self, 'voc_' + year + '_' + image_set)
         self._image_set = image_set
         self._year = year
@@ -24,18 +25,19 @@ class PascalVoc(ImageDataset):
         self._data_path = os.path.join(self._devkit_path, 'VOC' + self._year)
         assert os.path.exists(self._data_path), \
             'Path to data does not exist: {}'.format(self._data_path)
-        self._classes = CLASSES
-        self._class_index = dict(zip(self.classes, range(self.num_classes)))
-        self._image_index = self._load_image_index()
-        self._image_data = self._load_image_data()
-        self._salt = str(uuid.uuid4())
-        self._comp_id = 'comp1'
+        self._classes = _CLASSES
+        if not only_classes:
+            self._class_index = dict(zip(self.classes, range(self.num_classes)))
+            self._image_index = self._load_image_index()
+            self._image_data = self._load_image_data()
+            self._salt = str(uuid.uuid4())
+            self._comp_id = 'comp1'
 
-        # PASCAL specific config options
-        self.config = {'cleanup': True,
-                       'use_salt': True,
-                       'use_diff': False,
-                       'matlab_eval': False}
+            # PASCAL specific config options
+            self.config = {'cleanup': True,
+                        'use_salt': True,
+                        'use_diff': False,
+                        'matlab_eval': False}
 
     def image_path_at(self, id):
         image_path = os.path.join(self._data_path, 'JPEGImages',
@@ -60,22 +62,6 @@ class PascalVoc(ImageDataset):
                     raise ValueError('Unknown string format: %s' % (id))
 
         return image_index
-        
-    def _load_image_data(self):
-        cache_file = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
-        if os.path.exists(cache_file):
-            with open(cache_file, 'rb') as fid:
-                image_data = pickle.load(fid)
-            print('Data for {} gt roidb loaded from {}'.format(self._image_set + '_' + self._year, cache_file))
-            return image_data
-            
-        image_data = [self._load_annotation(idx, id) for idx, id in enumerate(self._image_index)]
-        
-        with open(cache_file, 'wb') as fid:
-            pickle.dump(image_data, fid, pickle.HIGHEST_PROTOCOL)
-        print('Wrote gt roidb to {}'.format(cache_file))
-        
-        return image_data
         
     def _load_annotation(self, idx, id):
         img_path = self.image_path_at(id)
@@ -114,6 +100,7 @@ class PascalVoc(ImageDataset):
             overlaps[idx, cls] = 1.0
             areas[idx] = (x2 - x1 + 1) * (y2 - y1 + 1)
             
+        utils.validate_boxes(boxes, width=img_size[1], height=img_size[0])
         return {'index': idx,
                 'id': id,
                 'path': img_path,
