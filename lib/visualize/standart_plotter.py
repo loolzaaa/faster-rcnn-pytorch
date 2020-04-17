@@ -122,7 +122,7 @@ class StandartPlotter():
         self.ax_rpn_bbox.set_title('RPN bbox loss')
 
         self.ax_rcnn_cls.cla()
-        self.ax_rcnn_cls.set_title('RCNN bbox loss')
+        self.ax_rcnn_cls.set_title('RCNN class loss')
 
         self.ax_rcnn_bbox.cla()
         self.ax_rcnn_bbox.set_title('RCNN bbox loss')
