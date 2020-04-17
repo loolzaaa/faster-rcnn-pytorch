@@ -71,8 +71,6 @@ parser_test = subparsers.add_parser('test', formatter_class=formatter,
 add_common_parser_arguments(parser_test)
 parser_test.add_argument('-ldd', '--load_dir', default='models',
                          help='directory to load model')
-parser_test.add_argument('--vis', action='store_true',
-                         help='visualize boxes on image')
 parser_test.add_argument('-ap', '--add_params', nargs=argparse.REMAINDER,
                           default=[], help='additional parameters')
 
@@ -142,7 +140,7 @@ if __name__ == "__main__":
     elif args.mode == 'test':
         test(dataset=args.dataset, net=args.net, class_agnostic=args.class_agnostic,
         load_dir=args.load_dir, session=args.session, epoch=args.epoch,
-        vis=args.vis, add_params=add_params)
+        add_params=add_params)
     else:
         detect(dataset=args.dataset, net=args.net, class_agnostic=args.class_agnostic,
         load_dir=args.load_dir, session=args.session, epoch=args.epoch,
