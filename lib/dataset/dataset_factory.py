@@ -1,9 +1,11 @@
+import os
 import numpy as np
 from colorama import Back, Fore
 from config import cfg
 from dataset import detection_set
 from dataset.voc.pascal_voc import PascalVoc
 from dataset.coco.coco import COCO
+
 
 def get_dataset(dataset_sequence, params, mode='train', only_classes=False):
     only_cls_str = 'classes for ' if only_classes else ''
@@ -19,10 +21,12 @@ def get_dataset(dataset_sequence, params, mode='train', only_classes=False):
         image_set = dataset_sequence[(len(dataset_name) + len(year) + 2):]
         devkit_path = params['devkit_path'] if 'devkit_path' in params else None
         if devkit_path is None:
-            print(Back.YELLOW + Fore.BLACK + 'WARNING! ' 
-                  + 'Cannot find "devkit_path" in additional parameters. ' 
-                  + 'Try to use default path (VOCdevkit)...')
-            devkit_path = 'VOCdevkit'
+            print(Back.YELLOW + Fore.BLACK + 'WARNING! '
+                  + 'Cannot find "devkit_path" in additional parameters. '
+                  + 'Try to use default path (./data/VOCdevkit)...')
+            devkit_path = os.path.join(cfg.DATA_DIR, 'VOCdevkit')
+        else:
+            devkit_path = os.path.join(cfg.DATA_DIR, devkit_path)
         dataset = PascalVoc(image_set, year, devkit_path, only_classes)
         short_name = dataset_name + '_' + year
         print('Loaded {}PascalVoc {} {} dataset.'.format(only_cls_str, year, image_set))
@@ -31,10 +35,12 @@ def get_dataset(dataset_sequence, params, mode='train', only_classes=False):
         image_set = dataset_sequence[(len(dataset_name) + len(year) + 2):]
         data_path = params['data_path'] if 'data_path' in params else None
         if data_path is None:
-            print(Back.YELLOW + Fore.BLACK + 'WARNING! ' 
-                  + 'Cannot find "data_path" in additional parameters. ' 
-                  + 'Try to use default path (COCO)...')
-            data_path = 'COCO'
+            print(Back.YELLOW + Fore.BLACK + 'WARNING! '
+                  + 'Cannot find "data_path" in additional parameters. '
+                  + 'Try to use default path (./daya/COCO)...')
+            data_path = os.path.join(cfg.DATA_DIR, 'COCO')
+        else:
+            data_path = os.path.join(cfg.DATA_DIR, data_path)
         dataset = COCO(image_set, year, data_path, only_classes)
         short_name = dataset_name + '_' + year
         print('Loaded {}COCO {} {} dataset.'.format(only_cls_str, year, image_set))
@@ -43,7 +49,7 @@ def get_dataset(dataset_sequence, params, mode='train', only_classes=False):
 
     if not only_classes:
         if mode == 'train' and cfg.TRAIN.USE_FLIPPED:
-            print(Back.WHITE + Fore.BLACK + 'Appending horizontally-flipped ' 
+            print(Back.WHITE + Fore.BLACK + 'Appending horizontally-flipped '
                                           + 'training examples...')
             dataset = _append_flipped_images(dataset)
             print('Done.')
@@ -53,12 +59,13 @@ def get_dataset(dataset_sequence, params, mode='train', only_classes=False):
         print('Done.')
 
         if mode == 'train':
-            print(Back.WHITE + Fore.BLACK + 'Filtering image data ' 
+            print(Back.WHITE + Fore.BLACK + 'Filtering image data '
                                           + '(remove images without boxes)...')
             dataset = _filter_data(dataset)
             print('Done.')
 
     return dataset, short_name
+
 
 def _append_flipped_images(dataset):
     for i in range(len(dataset)):
@@ -77,6 +84,7 @@ def _append_flipped_images(dataset):
         dataset._image_index.append(img['id'])
 
     return dataset
+
 
 def _prepare_data(dataset):
     for i in range(len(dataset)):
@@ -97,6 +105,7 @@ def _prepare_data(dataset):
 
     return dataset
 
+
 def _filter_data(dataset):
     print('Before filtering, there are %d images...' % (len(dataset)))
     i = 0
@@ -108,5 +117,4 @@ def _filter_data(dataset):
 
     print('After filtering, there are %d images...' % (len(dataset)))
     return dataset
-
 

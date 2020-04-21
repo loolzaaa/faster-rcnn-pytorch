@@ -1,4 +1,3 @@
-import os
 import numpy as np
 from easydict import EasyDict as edict
 
@@ -23,7 +22,8 @@ cfg.TRAIN.WEIGHT_DECAY = 0.0005
 cfg.TRAIN.RPN_PRE_NMS_TOP = 12000
 cfg.TRAIN.RPN_POST_NMS_TOP = 2000
 cfg.TRAIN.RPN_NMS_THRESHOLD = 0.7
-cfg.TRAIN.RPN_CLOBBER_POSITIVES = False # If an anchor statisfied by positive and negative conditions set to negative
+# If an anchor statisfied by positive and negative conditions set to negative
+cfg.TRAIN.RPN_CLOBBER_POSITIVES = False
 cfg.TRAIN.RPN_NEGATIVE_OVERLAP = 0.3
 cfg.TRAIN.RPN_POSITIVE_OVERLAP = 0.7
 cfg.TRAIN.RPN_MAX_LABELS = 256
