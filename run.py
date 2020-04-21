@@ -4,11 +4,11 @@ import time
 import argparse
 import torch
 from colorama import init, deinit, Back, Fore
-from config import cfg
+from lib.config import cfg
 from script.train import train
 from script.test import test
 from script.detect import detect
-from utils.net_utils import parse_additional_params
+from lib.utils.net_utils import parse_additional_params
 
 lib_path = os.path.join(os.path.dirname(__file__), 'lib')
 if lib_path not in sys.path:
