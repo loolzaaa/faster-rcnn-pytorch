@@ -25,6 +25,7 @@ All results were obtained on *Pascal VOC 2007* (min scale = 600) with *NVIDIA Ge
 |ResNet50|2|7|73.1%|
 |ResNet101|1|6|74.5%|
 
+---
 ## Preparation
 Clone this repo and create `data` folder in it:
 ```
@@ -52,8 +53,16 @@ python setup.py develop
 
 ### Data preparation
 Prepare dataset as described [here](https://github.com/rbgirshick/py-faster-rcnn#beyond-the-demo-installation-for-training-and-testing-models) for Pascal VOC.
-*Actually, you can use any dataset. Just download it and create softlinks in library root folder.*
+*Actually, you can use any dataset. Just download it and create softlinks in `library_root/data` folder.*
 
+You can, *but not necessary*, specify directory name for dataset relative `./data` folder in addtional parameters for run script.
+For example:
+- `python run.py train ............. --add_params devkit_path=VOC_DEVKIT_PATH` => ./data/VOC_DEVKIT_PATH
+- `python run.py train ............. -ap data_path=COCO2014` => ./data/COCO2014
+
+**NOTE** Name of the parameter is different for datasets (`devkit_path` for Pascal VOC, `data_path` for COCO, etc.)
+
+---
 ## Usage:
 All interaction with the library is done through a `run.py` script. Just run:
 ```
