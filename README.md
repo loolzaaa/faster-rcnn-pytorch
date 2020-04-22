@@ -60,7 +60,9 @@ For example:
 - `python run.py train ............. --add_params devkit_path=VOC_DEVKIT_PATH` => ./data/VOC_DEVKIT_PATH
 - `python run.py train ............. -ap data_path=COCO2014` => ./data/COCO2014
 
-**NOTE** Name of the parameter is different for datasets (`devkit_path` for Pascal VOC, `data_path` for COCO, etc.)
+**NOTE:** Name of the parameter is different for datasets (`devkit_path` for Pascal VOC, `data_path` for COCO, etc.)
+
+**WARNING! If you change any parameter of some dataset, you must remove cache files for this dataset in `./data/cache` folder!**
 
 ---
 ## Usage:
