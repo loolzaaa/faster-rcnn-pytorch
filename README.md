@@ -7,7 +7,7 @@ This implementation of Faster R-CNN network based on PyTorch 1.0 branch of [jwya
 * Add simple visualization of training process
 * Add abstractions for easy add new datasets, backbones, visualize tools
 ### TODOs:
-- [ ] Add support for multi GPU training
+- [x] Add support for multi GPU training
 - [ ] Add another pooling layers
 - [ ] Add paramater for color mode of pretrained weights
 - [ ] Add config load file parameter (with refresh already defined parameters)
@@ -33,9 +33,9 @@ git clone https://github.com/loolzaaa/faster-rcnn-pytorch.git
 cd faster-rcnn-pytorch && mkdir data
 ```
 ### Prerequisites
-- Python 3.8.x
-- PyTorch 1.4.x
-- CUDA 10
+- Python 3.5+
+- PyTorch 1.3+
+- CUDA 8+
 - Other libraries in [this gist (Conda environment)](https://gist.github.com/loolzaaa/fdbc406d281db9dc0a723536a41679d6)
 
 ### Compilation

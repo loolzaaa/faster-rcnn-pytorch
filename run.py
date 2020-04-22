@@ -27,6 +27,8 @@ def add_common_parser_arguments(parser):
                         help='whether perform class agnostic bounding box regression')
     parser.add_argument('--cuda', action='store_true',
                         help='whether use CUDA for network')
+    parser.add_argument('--mGPU', action='store_true',
+                        help='whether use multi GPU for network (train only)')
 
 
 parser = argparse.ArgumentParser(description='Faster R-CNN Network')
@@ -136,7 +138,7 @@ if __name__ == "__main__":
               pretrain=args.pretrain, resume=args.resume, class_agnostic=args.class_agnostic,
               total_epoch=args.total_epoch, display_interval=args.display_interval,
               session=args.session, epoch=args.epoch, save_dir=args.save_dir,
-              vis_off=args.vis_off, add_params=add_params)
+              vis_off=args.vis_off, mGPU=args.mGPU, add_params=add_params)
     elif args.mode == 'test':
         test(dataset=args.dataset, net=args.net, class_agnostic=args.class_agnostic,
              load_dir=args.load_dir, session=args.session, epoch=args.epoch,
