@@ -73,7 +73,6 @@ def test(dataset, net, class_agnostic, load_dir, session, epoch, add_params):
             rois, cls_prob, bbox_pred, *_ = faster_rcnn(image_data, image_info, None)
 
         boxes = rois[:, :, 1:5]
-        breakpoint()
 
         if cfg.TEST.BBOX_REG:
             # Apply bounding-box regression deltas
