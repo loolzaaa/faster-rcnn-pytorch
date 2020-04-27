@@ -1,3 +1,4 @@
+import ast
 import torch
 import cv2 as cv
 import numpy as np
@@ -21,8 +22,18 @@ def parse_additional_params(params):
                     continue
 
                 value = pair[1]
-                if len(key) == 0:
-                    add_params[key] = value
+                if value.find('[') == 0:
+                    try:
+                        add_params[key] = list(ast.literal_eval(value))
+                    except:
+                        err_params.append(param)
+                    continue
+
+                if value.find('{') == 0:
+                    try:
+                        add_params[key] = dict(ast.literal_eval(value))
+                    except:
+                        err_params.append(param)
                     continue
                 
                 try:
@@ -33,6 +44,19 @@ def parse_additional_params(params):
                 add_params[key] = value
     
     return add_params, err_params
+
+def smooth_l1_loss(input, target, beta=1, theta=1, size_average=True):
+    """
+    very similar to the smooth_l1_loss from pytorch, but with
+    the extra beta parameter
+    """
+    n = torch.abs(input - target)
+    cond = n < beta
+    loss = torch.where(cond, 0.5 * n ** 2 / beta, n - 0.5 * beta)
+    loss = loss * theta
+    if size_average:
+        return loss.mean()
+    return loss.sum()
 
 def _smooth_l1_loss(bbox_pred, bbox_targets, bbox_inside_weights, bbox_outside_weights, sigma=1.0, dim=[1]):
     '''
@@ -57,7 +81,7 @@ def _smooth_l1_loss(bbox_pred, bbox_targets, bbox_inside_weights, bbox_outside_w
         loss_box = loss_box.sum(i)
     loss_box = loss_box.mean()
     return loss_box
-        
+
 def clip_gradient(model, clip_norm):
     """Computes a gradient clipping coefficient based on gradient norm."""
     totalnorm = 0
