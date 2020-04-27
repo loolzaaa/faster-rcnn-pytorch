@@ -33,8 +33,6 @@ class _AnchorTargetLayer(nn.Module):
         
         # label: 1 is positive, 0 is negative, -1 is dont care
         labels = gt_boxes.new_full((batch_size, idx_inside.size(0)), -1)
-        bbox_inside_weights = gt_boxes.new_zeros((batch_size, idx_inside.size(0)))
-        bbox_outside_weights = gt_boxes.new_zeros((batch_size, idx_inside.size(0)))
 
         # Overlaps (IoU) size: batch_size x anchors x gt_boxes
         overlaps = bbox_overlaps_batch(anchors, gt_boxes)
@@ -87,44 +85,14 @@ class _AnchorTargetLayer(nn.Module):
         argmax_overlaps = argmax_overlaps + offset.view(batch_size, 1).to(argmax_overlaps)
         bbox_targets = self._compute_targets_batch(anchors, gt_boxes.view(-1,5)[argmax_overlaps.view(-1), :].view(batch_size, -1, 5))
         
-        # use a single value instead of 4 values for easy index.
-        bbox_inside_weights[labels == 1] = 1.0
-        
-        num_examples = torch.sum(labels[i] >= 0)
-        positive_weights = 1.0 / num_examples.item()
-        negative_weights = 1.0 / num_examples.item()
-        
-        bbox_outside_weights[labels == 1] = positive_weights
-        bbox_outside_weights[labels == 0] = negative_weights
-        
+        # Unmap to all anchors, not only inside img -> B x TOTAL_ANCHOR x [4]
         labels = self._unmap(labels, total_anchors, idx_inside, batch_size, fill=-1)
         bbox_targets = self._unmap(bbox_targets, total_anchors, idx_inside, batch_size, fill=0)
-        bbox_inside_weights = self._unmap(bbox_inside_weights, total_anchors, idx_inside, batch_size, fill=0)
-        bbox_outside_weights = self._unmap(bbox_outside_weights, total_anchors, idx_inside, batch_size, fill=0)
 
-        outputs = []
+        labels = labels.view(batch_size, height, width, self._anchors_per_point)
+        labels = labels.permute(0, 3, 1, 2).contiguous() # B x A x H x W
 
-        labels = labels.view(batch_size, height, width, self._anchors_per_point).permute(0,3,1,2).contiguous()
-        labels = labels.view(batch_size, 1, self._anchors_per_point * height, width)
-        outputs.append(labels)
-
-        bbox_targets = bbox_targets.view(batch_size, height, width, self._anchors_per_point*4).permute(0,3,1,2).contiguous()
-        outputs.append(bbox_targets)
-
-        anchors_count = bbox_inside_weights.size(1)
-        bbox_inside_weights = bbox_inside_weights.view(batch_size,anchors_count,1).expand(batch_size, anchors_count, 4)
-
-        bbox_inside_weights = bbox_inside_weights.contiguous().view(batch_size, height, width, 4*self._anchors_per_point)\
-                            .permute(0,3,1,2).contiguous()
-
-        outputs.append(bbox_inside_weights)
-        
-        bbox_outside_weights = bbox_outside_weights.view(batch_size,anchors_count,1).expand(batch_size, anchors_count, 4)
-        bbox_outside_weights = bbox_outside_weights.contiguous().view(batch_size, height, width, 4*self._anchors_per_point)\
-                            .permute(0,3,1,2).contiguous()
-        outputs.append(bbox_outside_weights)
-        
-        return outputs
+        return labels, bbox_targets
         
     def _unmap(self, data, count, inds, batch_size, fill=0):
         """ Unmap a subset of item (data) back to the original set of items (of

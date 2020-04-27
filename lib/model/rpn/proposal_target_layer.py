@@ -1,21 +1,14 @@
-import numpy as np
 import torch
 import torch.nn as nn
 from config import cfg
 from utils.bbox_transform import bbox_overlaps_batch, bbox_transform_batch
 
 class _ProposalTargetLayer(nn.Module):
-    def __init__(self):
+    def __init__(self, regression_weights):
         super(_ProposalTargetLayer, self).__init__()
-        self.BBOX_NORMALIZE_MEANS = torch.Tensor(cfg.TRAIN.BBOX_NORMALIZE_MEANS)
-        self.BBOX_NORMALIZE_STDS = torch.Tensor(cfg.TRAIN.BBOX_NORMALIZE_STDS)
-        self.BBOX_INSIDE_WEIGHTS = torch.Tensor((1.0, 1.0, 1.0, 1.0))
+        self._regression_weights = regression_weights
         
     def forward(self, all_rois, gt_boxes):
-        self.BBOX_NORMALIZE_MEANS = self.BBOX_NORMALIZE_MEANS.to(gt_boxes)
-        self.BBOX_NORMALIZE_STDS = self.BBOX_NORMALIZE_STDS.to(gt_boxes)
-        self.BBOX_INSIDE_WEIGHTS = self.BBOX_INSIDE_WEIGHTS.to(gt_boxes)
-        
         gt_boxes_append = gt_boxes.new_zeros((gt_boxes.size()))
         gt_boxes_append[:, :, 1:5] =  gt_boxes[:, :, :4]
         
@@ -23,16 +16,15 @@ class _ProposalTargetLayer(nn.Module):
         all_rois = torch.cat((all_rois, gt_boxes_append), 1)
         
         rois_per_image = cfg.TRAIN.PROPOSAL_PER_IMG
-        fg_rois_per_image = int(np.round(cfg.TRAIN.FG_PROPOSAL_FRACTION * rois_per_image))
+        fg_rois_per_image = int(torch.round(torch.Tensor([rois_per_image])
+                                * cfg.TRAIN.FG_PROPOSAL_FRACTION))
         fg_rois_per_image = 1 if fg_rois_per_image == 0 else fg_rois_per_image
         
-        labels, rois, bbox_targets, bbox_inside_weights = \
+        labels, rois, bbox_targets = \
             self._sample_rois_pytorch(all_rois, gt_boxes, fg_rois_per_image, rois_per_image)
-        
-        bbox_outside_weights = (bbox_inside_weights > 0).float()
 
-        return rois, labels, bbox_targets, bbox_inside_weights, bbox_outside_weights
-        
+        return rois, labels, bbox_targets
+
     def _sample_rois_pytorch(self, all_rois, gt_boxes, fg_rois_per_image, rois_per_image):
         """Generate a random sample of RoIs comprising foreground and background
         examples.
@@ -81,14 +73,12 @@ class _ProposalTargetLayer(nn.Module):
                                         * fg_num_rois).long()
                 fg_inds = fg_inds[rand_num]
                 fg_rois_per_this_image = rois_per_image
-                bg_rois_per_this_image = 0
             elif bg_num_rois > 0 and fg_num_rois == 0:
                 # sampling bg
                 rand_num = torch.floor(torch.rand(rois_per_image).to(gt_boxes)
                                         * bg_num_rois).long()
                 bg_inds = bg_inds[rand_num]
                 bg_rois_per_this_image = rois_per_image
-                fg_rois_per_this_image = 0
             else:
                 raise ValueError("bg_num_rois = 0 and fg_num_rois = 0, this should not happen!")
                 
@@ -109,10 +99,10 @@ class _ProposalTargetLayer(nn.Module):
             
         bbox_target_data = self._compute_targets_pytorch(rois_batch[:,:,1:5], gt_rois_batch[:,:,:4])
         
-        bbox_targets, bbox_inside_weights = \
+        bbox_targets = \
                 self._get_bbox_regression_labels_pytorch(bbox_target_data, labels_batch)
         
-        return labels_batch, rois_batch, bbox_targets, bbox_inside_weights
+        return labels_batch, rois_batch, bbox_targets
     
     def _compute_targets_pytorch(self, ex_rois, gt_rois):
         """Compute bounding-box regression targets for an image."""
@@ -121,12 +111,7 @@ class _ProposalTargetLayer(nn.Module):
         assert ex_rois.size(2) == 4
         assert gt_rois.size(2) == 4
 
-        targets = bbox_transform_batch(ex_rois, gt_rois)
-
-        if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
-            # Optionally normalize targets by a precomputed mean and stdev
-            targets = ((targets - self.BBOX_NORMALIZE_MEANS.expand_as(targets))
-                        / self.BBOX_NORMALIZE_STDS.expand_as(targets))
+        targets = bbox_transform_batch(ex_rois, gt_rois, self._regression_weights)
 
         return targets
     
@@ -137,22 +122,18 @@ class _ProposalTargetLayer(nn.Module):
         by the network (i.e. only one class has non-zero targets).
         Returns:
             bbox_target (ndarray): b x N x 4K blob of regression targets
-            bbox_inside_weights (ndarray): b x N x 4K blob of loss weights
         """
         batch_size = labels_batch.size(0)
         rois_per_image = labels_batch.size(1)
         clss = labels_batch
         bbox_targets = bbox_target_data.new_zeros((batch_size, rois_per_image, 4))
-        bbox_inside_weights = bbox_target_data.new_zeros(bbox_targets.size())
 
         for b in range(batch_size):
-            # assert clss[b].sum() > 0
             if clss[b].sum() == 0:
                 continue
             inds = torch.nonzero(clss[b] > 0).view(-1)
             for i in range(inds.numel()):
                 ind = inds[i]
                 bbox_targets[b, ind, :] = bbox_target_data[b, ind, :]
-                bbox_inside_weights[b, ind, :] = self.BBOX_INSIDE_WEIGHTS
 
-        return bbox_targets, bbox_inside_weights
+        return bbox_targets

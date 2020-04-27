@@ -1,4 +1,3 @@
-import torchvision
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,17 +5,19 @@ from config import cfg
 from model.rpn.rpn import _RPN
 from model.roi.roi_pool import ROIPool
 from model.rpn.proposal_target_layer import _ProposalTargetLayer
-from utils.net_utils import _smooth_l1_loss
+from utils.net_utils import smooth_l1_loss
+from utils.bbox_transform import bbox_transform_inv, clip_boxes
 
 class FasterRCNN(nn.Module):
     def __init__(self, num_classes, class_agnostic, out_depth):
         super().__init__()
         self.n_classes = num_classes
         self.class_agnostic = class_agnostic
+        self.regression_weights = (10., 10., 5., 5.)
         
         # define rpn
         self.RCNN_rpn = _RPN(out_depth)
-        self.RCNN_proposal_target = _ProposalTargetLayer()
+        self.RCNN_proposal_target = _ProposalTargetLayer(self.regression_weights)
         
         self.RCNN_roi_pool = ROIPool(1.0/16.0, cfg.GENERAL.POOLING_SIZE)
         
@@ -31,19 +32,10 @@ class FasterRCNN(nn.Module):
         
         if self.training:
             roi_data = self.RCNN_proposal_target(rois, gt_boxes)
-            rois, rois_label, rois_target, rois_inside_ws, rois_outside_ws = roi_data
+            rois, rois_label, rois_target = roi_data
             
             rois_label = rois_label.view(-1).long()
             rois_target = rois_target.view(-1, rois_target.size(2))
-            rois_inside_ws = rois_inside_ws.view(-1, rois_inside_ws.size(2))
-            rois_outside_ws = rois_outside_ws.view(-1, rois_outside_ws.size(2))
-        else:
-            rois_label = None
-            rois_target = None
-            rois_inside_ws = None
-            rois_outside_ws = None
-            rpn_loss_cls = 0
-            rpn_loss_bbox = 0
             
         pooled_feat = self.RCNN_roi_pool(base_feature, rois.view(-1,5))
         
@@ -55,13 +47,12 @@ class FasterRCNN(nn.Module):
         if self.training and not self.class_agnostic:
             # select the corresponding columns according to roi labels
             bbox_pred_view = bbox_pred.view(bbox_pred.size(0), int(bbox_pred.size(1) / 4), 4)
-            bbox_pred_select = torch.gather(bbox_pred_view, 1, rois_label.view(rois_label.size(0), 1, 1)
-                                            .expand(rois_label.size(0), 1, 4))
+            gather_idx = rois_label.view(rois_label.size(0), 1, 1).expand(rois_label.size(0), 1, 4)
+            bbox_pred_select = torch.gather(bbox_pred_view, 1, gather_idx)
             bbox_pred = bbox_pred_select.squeeze(1)
 
         # compute object classification probability
         cls_score = self.RCNN_cls_score(pooled_feat)
-        cls_prob = F.softmax(cls_score, 1)
 
         RCNN_loss_cls = 0
         RCNN_loss_bbox = 0
@@ -71,12 +62,19 @@ class FasterRCNN(nn.Module):
             RCNN_loss_cls = F.cross_entropy(cls_score, rois_label)
 
             # bounding box regression L1 loss
-            RCNN_loss_bbox = _smooth_l1_loss(bbox_pred, rois_target, rois_inside_ws, rois_outside_ws)
+            pos_idx = torch.nonzero(rois_label > 0).view(-1)
+            RCNN_loss_bbox = smooth_l1_loss(bbox_pred[pos_idx],
+                                            rois_target[pos_idx],
+                                            size_average=False)
+            RCNN_loss_bbox = RCNN_loss_bbox / rois_label.numel()
+        else:
+            cls_score = F.softmax(cls_score, 1)
+            cls_score = cls_score.view(batch_size, rois.size(1), -1)
+            bbox_pred = bbox_pred.view(batch_size, rois.size(1), -1)
+            bbox_pred = bbox_transform_inv(rois[:, :, 1:5], bbox_pred, self.regression_weights)
+            bbox_pred = clip_boxes(bbox_pred, im_info, batch_size)
 
-        cls_prob = cls_prob.view(batch_size, rois.size(1), -1)
-        bbox_pred = bbox_pred.view(batch_size, rois.size(1), -1)
-
-        return rois, cls_prob, bbox_pred, rpn_loss_cls, rpn_loss_bbox, RCNN_loss_cls, RCNN_loss_bbox, rois_label
+        return cls_score, bbox_pred, rpn_loss_cls, rpn_loss_bbox, RCNN_loss_cls, RCNN_loss_bbox
 
     def _prepare_pooled_feature(self, pooled_feature):
         raise NotImplementedError
