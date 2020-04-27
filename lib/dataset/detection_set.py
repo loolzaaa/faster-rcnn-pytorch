@@ -2,18 +2,23 @@ import os
 import numpy as np
 from dataset.image_dataset import ImageDataset
 
+
 class DetectionSet(ImageDataset):
-    def __init__(self, image_path, classes):
-        ImageDataset.__init__(self, 'Detection dataset')
-        self._image_path = image_path
+    def __init__(self, params):
+        ImageDataset.__init__(self, 'Detection dataset', params)
+        self._image_path = params['image_path']
         assert os.path.exists(self._image_path), \
             'Path to data does not exist: {}'.format(self._image_path)
-        self._classes = classes
+        self._classes = params['classes']
+        self._extension = params['img_ext'] if 'img_ext' in params else '.jpg'
         self._image_index = self._load_image_index()
         self._image_data = self._load_image_data()
+        for img in self._image_data:
+            for k, v in self._config.items():
+                img[k] = v
 
     def image_path_at(self, name):
-        image_path = os.path.join(self._image_path, name + '.jpg')
+        image_path = os.path.join(self._image_path, name + self._extension)
         assert os.path.exists(image_path), \
             'Image Path does not exist: {}'.format(image_path)
         return image_path
@@ -21,7 +26,8 @@ class DetectionSet(ImageDataset):
     def _load_image_index(self):
         image_index = []
         for f in os.listdir(self._image_path):
-            if f[-3:] == 'jpg' and os.path.isfile(os.path.join(self._image_path, f)):
+            is_file = os.path.isfile(os.path.join(self._image_path, f))
+            if f[-4:] == self._extension and is_file:
                 image_index.append(f[:-4])
         return image_index
 

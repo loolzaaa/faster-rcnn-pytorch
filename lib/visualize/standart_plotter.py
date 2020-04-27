@@ -36,9 +36,9 @@ class StandartPlotter():
     def _init_plotter(self, show=False):
         self.cid = self.fig.canvas.mpl_connect('close_event', self._reopen_fig)
         self.fig.canvas.set_window_title('Faster R-CNN Network train process')
-        timer = self.fig.canvas.new_timer(interval=1000)
-        timer.add_callback(self._callback)
-        timer.start()
+        self.timer = self.fig.canvas.new_timer(interval=1000)
+        self.timer.add_callback(self._callback)
+        self.timer.start()
         if show:
             plt.show()
 
@@ -94,6 +94,7 @@ class StandartPlotter():
 
     def _terminate(self):
         self.fig.canvas.mpl_disconnect(self.cid)
+        self.timer.stop()
         plt.close(self.fig)
 
     def _update_value(self, ax, data, text_size):

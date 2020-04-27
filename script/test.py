@@ -5,7 +5,6 @@ import pprint
 import pickle
 import torch
 import numpy as np
-import cv2 as cv
 import dataset.dataset_factory as dataset_factory
 from colorama import Back, Fore
 from config import cfg
@@ -13,7 +12,6 @@ from torch.utils.data import DataLoader
 from dataset.collate import collate_test
 from model.vgg16 import VGG16
 from model.resnet import Resnet
-from utils.bbox_transform import bbox_transform_inv, clip_boxes
 from _C import nms
 
 def test(dataset, net, class_agnostic, load_dir, session, epoch, add_params):
@@ -70,45 +68,25 @@ def test(dataset, net, class_agnostic, load_dir, session, epoch, add_params):
 
         det_tic = time.time()
         with torch.no_grad():
-            rois, cls_prob, bbox_pred, *_ = faster_rcnn(image_data, image_info, None)
+            cls_score, bbox_pred, *_ = faster_rcnn(image_data, image_info, None)
 
-        boxes = rois[:, :, 1:5]
+        bbox_pred /= image_info[0][2].item()
 
-        if cfg.TEST.BBOX_REG:
-            # Apply bounding-box regression deltas
-            if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
-            # Unnormalize targets if it was while training process
-                bbox_pred = bbox_pred.view(-1, 4) \
-                          * torch.Tensor(cfg.TRAIN.BBOX_NORMALIZE_STDS).to(device) \
-                          + torch.Tensor(cfg.TRAIN.BBOX_NORMALIZE_MEANS).to(device)
-                if class_agnostic:                    
-                    bbox_pred = bbox_pred.view(1, -1, 4)
-                else:
-                    bbox_pred = bbox_pred.view(1, -1, 4 * dataset.num_classes)
-
-            pred_boxes = bbox_transform_inv(boxes, bbox_pred)
-            pred_boxes = clip_boxes(pred_boxes, image_info, 1)
-        else:
-            # Simply repeat the boxes, once for each class
-            pred_boxes = torch.repeat_interleave(boxes, dataset.num_classes, 2)
-
-        pred_boxes /= image_info[0][2].item()
-
-        scores = cls_prob.squeeze()
-        pred_boxes = pred_boxes.squeeze()
+        scores = cls_score.squeeze()
+        bbox_pred = bbox_pred.squeeze()
         det_toc = time.time()
         detect_time = det_toc - det_tic
 
         misc_tic = time.time()
         for j in range(1, dataset.num_classes):
-            inds = torch.nonzero(scores[:,j] > 0).view(-1)
+            inds = torch.nonzero(scores[:,j] > 0.05).view(-1)
             if inds.numel() > 0:
                 cls_scores = scores[:,j][inds]
                 _, order = torch.sort(cls_scores, 0, True)
                 if class_agnostic:
-                    cls_boxes = pred_boxes[inds, :]
+                    cls_boxes = bbox_pred[inds, :]
                 else:
-                    cls_boxes = pred_boxes[inds][:, j * 4:(j + 1) * 4]
+                    cls_boxes = bbox_pred[inds][:, j * 4:(j + 1) * 4]
                 
                 cls_dets = torch.cat((cls_boxes, cls_scores.unsqueeze(1)), 1)
                 cls_dets = cls_dets[order]

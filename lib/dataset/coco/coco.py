@@ -10,12 +10,13 @@ from dataset.image_dataset import ImageDataset
 from dataset.coco.pycocotools.coco import COCO as MSCOCO
 from dataset.coco.pycocotools.cocoeval import COCOeval
 
+
 class COCO(ImageDataset):
-    def __init__(self, image_set, year, data_path, only_classes=False):
-        ImageDataset.__init__(self, 'COCO_' + year + '_' + image_set)
+    def __init__(self, image_set, year, params, only_classes=False):
+        ImageDataset.__init__(self, 'COCO_' + year + '_' + image_set, params)
         self._image_set = image_set
         self._year = year
-        self._data_path = data_path
+        self._data_path = params['data_path']
         assert os.path.exists(self._data_path), \
             'Path to data does not exist: {}'.format(self._data_path)
         self._COCO = MSCOCO(self._get_ann_file())

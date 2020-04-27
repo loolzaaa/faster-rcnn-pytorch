@@ -12,36 +12,33 @@ def get_dataset(dataset_sequence, params, mode='train', only_classes=False):
     print(Back.WHITE + Fore.BLACK + 'Loading {}image dataset...'.format(only_cls_str))
     dataset_name = dataset_sequence.split('_')[0]
     if dataset_name == 'detect':
-        dataset = detection_set.DetectionSet(image_path=params['image_path'],
-                                             classes=params['classes'])
+        dataset = detection_set.DetectionSet(params)
         short_name = 'det_set'
         print('Loaded Detection dataset.')
     elif dataset_name == 'voc':
         year = dataset_sequence.split('_')[1]
         image_set = dataset_sequence[(len(dataset_name) + len(year) + 2):]
-        devkit_path = params['devkit_path'] if 'devkit_path' in params else None
-        if devkit_path is None:
+        if 'devkit_path' in params:
+            params['devkit_path'] = os.path.join(cfg.DATA_DIR, params['devkit_path'])
+        else:
             print(Back.YELLOW + Fore.BLACK + 'WARNING! '
                   + 'Cannot find "devkit_path" in additional parameters. '
                   + 'Try to use default path (./data/VOCdevkit)...')
-            devkit_path = os.path.join(cfg.DATA_DIR, 'VOCdevkit')
-        else:
-            devkit_path = os.path.join(cfg.DATA_DIR, devkit_path)
-        dataset = PascalVoc(image_set, year, devkit_path, only_classes)
+            params['devkit_path'] = os.path.join(cfg.DATA_DIR, 'VOCdevkit')
+        dataset = PascalVoc(image_set, year, params, only_classes)
         short_name = dataset_name + '_' + year
         print('Loaded {}PascalVoc {} {} dataset.'.format(only_cls_str, year, image_set))
     elif dataset_name == 'coco':
         year = dataset_sequence.split('_')[1]
         image_set = dataset_sequence[(len(dataset_name) + len(year) + 2):]
-        data_path = params['data_path'] if 'data_path' in params else None
-        if data_path is None:
+        if 'data_path' in params:
+            params['data_path'] = os.path.join(cfg.DATA_DIR, params['data_path'])
+        else:
             print(Back.YELLOW + Fore.BLACK + 'WARNING! '
                   + 'Cannot find "data_path" in additional parameters. '
-                  + 'Try to use default path (./daya/COCO)...')
-            data_path = os.path.join(cfg.DATA_DIR, 'COCO')
-        else:
-            data_path = os.path.join(cfg.DATA_DIR, data_path)
-        dataset = COCO(image_set, year, data_path, only_classes)
+                  + 'Try to use default path (./data/COCO)...')
+            params['data_path'] = os.path.join(cfg.DATA_DIR, 'COCO')
+        dataset = COCO(image_set, year, params, only_classes)
         short_name = dataset_name + '_' + year
         print('Loaded {}COCO {} {} dataset.'.format(only_cls_str, year, image_set))
     else:

@@ -9,9 +9,10 @@ This implementation of Faster R-CNN network based on PyTorch 1.0 branch of [jwya
 ### TODOs:
 - [x] Add support for multi GPU training
 - [ ] Add another pooling layers
-- [ ] Add paramater for color mode of pretrained weights
+- [x] Add paramater for color mode of pretrained weights
 - [ ] Add config load file parameter (with refresh already defined parameters)
 - [ ] Add webcam mode of detection
+- [ ] Add PyTorch 1.5.0 support
 ### Tutorial:
 [Blog](http://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns) by [ankur6ue](https://github.com/ankur6ue)
 ### Benchmarking
@@ -46,17 +47,19 @@ python setup.py develop
 ```
 
 ### Pretrained model
-1. [Download](https://drive.google.com/open?id=1n2hWpTEWe3LwfOYq0VUslok-EmdqrMQP) pretrained models
+1. [Download](https://drive.google.com/open?id=1n2hWpTEWe3LwfOYq0VUslok-EmdqrMQP) caffe BGR pretrained models
 2. Put them into `data/pretrained_model/`
 
-**NOTE** Please, remember that this network used caffe2 (BGR color mode) pretrained model. PyTorch pretrained models are not supported yet, because its used another color mode (RGB) and loading process.
+**NOTE:** Please, remember that this network use caffe (*BGR color mode*) pretrained model **by default**. If you want to use PyTorch pretrained models, you must specify *RGB* color mode, image range = [0, 1], *mean = [0.485, 0.456, 0.406]* and *std = [0.229, 0.224, 0.225]* in additional parameters for run script. For example:
+```
+python run.py train ............. -ap color_mode=RGB image_range=1 mean="[0.485, 0.456, 0.406]" std="[0.229, 0.224, 0.225]"
+```
 
 ### Data preparation
 Prepare dataset as described [here](https://github.com/rbgirshick/py-faster-rcnn#beyond-the-demo-installation-for-training-and-testing-models) for Pascal VOC.
 *Actually, you can use any dataset. Just download it and create softlinks in `library_root/data` folder.*
 
-You can, *but not necessary*, specify directory name for dataset relative `./data` folder in addtional parameters for run script.
-For example:
+You can, *but not necessary*, specify directory name for dataset relative `./data` folder in addtional parameters for run script. For example:
 - `python run.py train ............. --add_params devkit_path=VOC_DEVKIT_PATH` => ./data/VOC_DEVKIT_PATH
 - `python run.py train ............. -ap data_path=COCO2014` => ./data/COCO2014
 

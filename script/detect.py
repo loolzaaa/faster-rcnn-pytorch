@@ -1,7 +1,6 @@
 import os
 import sys
 import pprint
-import numpy as np
 import time
 import cv2 as cv
 import torch
@@ -12,7 +11,6 @@ from torch.utils.data import DataLoader
 from dataset.collate import collate_test
 from model.vgg16 import VGG16
 from model.resnet import Resnet
-from utils.bbox_transform import bbox_transform_inv, clip_boxes
 from utils.net_utils import vis_detections
 from _C import nms
 
@@ -67,37 +65,20 @@ def detect(dataset, net, class_agnostic, load_dir, session, epoch, vis,
 
     faster_rcnn.eval()
 
-    for idx, img in enumerate(loader):
+    for i, data in enumerate(loader):
+        image_data = data[0].to(device)
+        image_info = data[1].to(device)
+
         total_tic = time.time()
-        im2show = cv.imread(dataset.image_path_at(img[3][0]))
+        im2show = cv.imread(dataset.image_path_at(data[3][0]))
         det_tic = time.time()
-        rois, cls_prob, bbox_pred, *_ = faster_rcnn(img[0].to(device), img[1].to(device), None)
-        
-        boxes = rois.data[:, :, 1:5]
-        scores = cls_prob.data
+        with torch.no_grad():
+            cls_score, bbox_pred, *_ = faster_rcnn(image_data, image_info, None)
 
-        if cfg.TEST.BBOX_REG:
-            # Apply bounding-box regression deltas
-            box_deltas = bbox_pred.data
-            # Optionally normalize targets by a precomputed mean and stdev
-            if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
-                box_deltas = box_deltas.view(-1, 4) * torch.Tensor(cfg.TRAIN.BBOX_NORMALIZE_STDS).to(device) \
-                            + torch.Tensor(cfg.TRAIN.BBOX_NORMALIZE_MEANS).to(device)
-                if class_agnostic:
-                    box_deltas = box_deltas.view(1, -1, 4)
-                else:
-                    box_deltas = box_deltas.view(1, -1, 4 * len(classes))
-            
-            pred_boxes = bbox_transform_inv(boxes, box_deltas)
-            pred_boxes = clip_boxes(pred_boxes, img[1].data, 1)
-        else:
-            # Simply repeat the boxes, once for each class
-            pred_boxes = torch.repeat_interleave(boxes, dataset.num_classes, 2)
+        bbox_pred /= image_info[0][2].item()
 
-        pred_boxes /= img[1][0][2]
-
-        scores = scores.squeeze()
-        pred_boxes = pred_boxes.squeeze()
+        scores = cls_score.squeeze()
+        bbox_pred = bbox_pred.squeeze()
         det_toc = time.time()
         detect_time = det_toc - det_tic
         misc_tic = time.time()
@@ -108,9 +89,9 @@ def detect(dataset, net, class_agnostic, load_dir, session, epoch, vis,
                 cls_scores = scores[:, j][inds]
                 _, order = torch.sort(cls_scores, dim=0, descending=True)
                 if class_agnostic:
-                    cls_boxes = pred_boxes[inds, :].contiguous()
+                    cls_boxes = bbox_pred[inds, :].contiguous()
                 else:
-                    cls_boxes = pred_boxes[inds][:, j * 4:(j + 1) * 4].contiguous()
+                    cls_boxes = bbox_pred[inds][:, j * 4:(j + 1) * 4].contiguous()
             
                 cls_dets = torch.cat((cls_boxes, cls_scores.unsqueeze(1)), 1)
                 cls_dets = cls_dets[order]
@@ -123,11 +104,11 @@ def detect(dataset, net, class_agnostic, load_dir, session, epoch, vis,
         nms_time = misc_toc - misc_tic
 
         sys.stdout.write('\rim_detect: {:d}/{:d} {:.3f}s {:.3f}s ' \
-                        .format(idx + 1, len(dataset), detect_time, nms_time))
+                        .format(i + 1, len(dataset), detect_time, nms_time))
         sys.stdout.flush()
 
         if vis:
-            result_path = os.path.join(image_dir, 'result', img[3][0] + '_det.jpg')
+            result_path = os.path.join(image_dir, 'result', data[3][0] + '_det.jpg')
             cv.imwrite(result_path, im2show)
         else:
             cv.imshow("frame", im2show)

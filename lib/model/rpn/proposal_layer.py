@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import numpy as np
 from config import cfg
 from model.rpn.anchor_generate import generate
 from utils.bbox_transform import bbox_transform_inv, clip_boxes

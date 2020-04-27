@@ -17,7 +17,7 @@ class Plotter():
         assert cmd is not None, 'Command cannot be None'
         if self.process.is_alive():
             self.plot_send.send([cmd, data])
-            if cmd == 'save':
+            if cmd == 'save' or cmd == 'close':
                 time.sleep(2)
             return True
         else:

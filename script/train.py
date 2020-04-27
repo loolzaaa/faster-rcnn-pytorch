@@ -49,9 +49,11 @@ def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step,
     print(Back.CYAN + Fore.BLACK + 'Output directory: %s' % (output_dir))
 
     pretrained = True
+    model_name = '{}.pth'.format(net)
     if 'use_pretrain' in add_params:
         pretrained = add_params['use_pretrain']
-    model_name = '{}.pth'.format(add_params['model_name'] if 'model_name' in add_params else net)
+    if 'model_name' in add_params:
+        model_name = '{}.pth'.format(add_params['model_name'])
     model_path = os.path.join(cfg.DATA_DIR, 'pretrained_model', model_name)
     if net == 'vgg16':
         faster_rcnn = VGG16(dataset.num_classes, class_agnostic=class_agnostic,
@@ -122,10 +124,8 @@ def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step,
             image_info = data[1].to(device)
             gt_boxes = data[2].to(device)
 
-            rois, cls_prob, bbox_pred, \
-                rpn_loss_cls, rpn_loss_bbox, \
-                RCNN_loss_cls, RCNN_loss_bbox, \
-                rois_label = faster_rcnn(image_data, image_info, gt_boxes)
+            *_, rpn_loss_cls, rpn_loss_bbox, \
+                RCNN_loss_cls, RCNN_loss_bbox = faster_rcnn(image_data, image_info, gt_boxes)
 
             loss = rpn_loss_cls.mean() + rpn_loss_bbox.mean() \
                 + RCNN_loss_cls.mean() + RCNN_loss_bbox.mean()

@@ -17,11 +17,11 @@ _CLASSES = ('__background__',  # always index 0
            'sheep', 'sofa', 'train', 'tvmonitor')
 
 class PascalVoc(ImageDataset):
-    def __init__(self, image_set, year, devkit_path, only_classes=False):
-        ImageDataset.__init__(self, 'voc_' + year + '_' + image_set)
+    def __init__(self, image_set, year, params, only_classes=False):
+        ImageDataset.__init__(self, 'voc_' + year + '_' + image_set, params)
         self._image_set = image_set
         self._year = year
-        self._devkit_path = devkit_path
+        self._devkit_path = params['devkit_path']
         self._data_path = os.path.join(self._devkit_path, 'VOC' + self._year)
         assert os.path.exists(self._data_path), \
             'Path to data does not exist: {}'.format(self._data_path)

@@ -1,6 +1,6 @@
+import torch
 import cv2 as cv
 import numpy as np
-import torch
 from config import cfg
 
 def collate_train(image_batch):
@@ -36,18 +36,18 @@ def get_image_blob(img):
     if len(im.shape) == 2:
         im = im[:, :, np.newaxis]
         im = np.concatenate((im, im, im), axis=2)
-    # TODO: Make work with this more flexible (color mode, mean, std)
-    #im = im[:, :, ::-1] # BGR -> RGB
+    if img['color_mode'].upper() == 'RGB':
+        im = im[:, :, ::-1] # BGR -> RGB
     if img['flipped']:
         im = im[:, ::-1, :]
-    im = im.astype(np.float32, copy=True)
-    im -= np.array([[cfg.GENERAL.PIXEL_MEANS]])
+    im = im.astype(np.float32, copy=True) / (255.0 if img['range'] == 1 else 1.0)
+    im = (im - np.array([[img['mean']]])) / np.array([[img['std']]])
     im_shape = im.shape # H x W x C
     im_size_min = np.min(im_shape[:2])
     im_size_max = np.max(im_shape[:2])
-    im_scale = float(600) / im_size_min
-    if im_scale * im_size_max > 1000:
-        im_scale = float(1000) / im_size_max
+    im_scale = float(cfg.GENERAL.MIN_IMG_SIZE) / im_size_min
+    if im_scale * im_size_max > cfg.GENERAL.MAX_IMG_SIZE:
+        im_scale = float(cfg.GENERAL.MAX_IMG_SIZE) / im_size_max
     im = cv.resize(im, None, None, fx=im_scale, fy=im_scale, interpolation=cv.INTER_LINEAR)
     
     blob = {'data': im}
