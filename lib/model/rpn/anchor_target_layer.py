@@ -89,10 +89,12 @@ class _AnchorTargetLayer(nn.Module):
         labels = self._unmap(labels, total_anchors, idx_inside, batch_size, fill=-1)
         bbox_targets = self._unmap(bbox_targets, total_anchors, idx_inside, batch_size, fill=0)
 
+        pos_idx = labels.view(-1).eq(1).nonzero().view(-1)
+
         labels = labels.view(batch_size, height, width, self._anchors_per_point)
         labels = labels.permute(0, 3, 1, 2).contiguous() # B x A x H x W
 
-        return labels, bbox_targets
+        return labels, bbox_targets, pos_idx
         
     def _unmap(self, data, count, inds, batch_size, fill=0):
         """ Unmap a subset of item (data) back to the original set of items (of

@@ -53,10 +53,9 @@ class _RPN(nn.Module):
         
         if self.training:
             rpn_data = self.RPN_anchor_target((rpn_cls_score.size(), gt_boxes, im_info))
-            rpn_label, bbox_targets = rpn_data
+            rpn_label, bbox_targets, pos_idx = rpn_data
             
             rpn_keep_all = rpn_label.view(-1).ne(-1).nonzero().view(-1)
-            rpn_keep_pos = rpn_label.view(-1).eq(1).nonzero().view(-1)
             
             # compute classification loss
             rpn_cls_score = rpn_cls_score_reshape.permute(0, 2, 3, 1).contiguous().view(-1, 2)
@@ -66,12 +65,11 @@ class _RPN(nn.Module):
 
             # compute bounding box loss
             rpn_bbox_pred = rpn_bbox_pred.permute(0, 2, 3, 1).contiguous().view(-1, 4)
-            rpn_bbox_pred = torch.index_select(rpn_bbox_pred, 0, rpn_keep_pos)
-            bbox_targets = torch.index_select(bbox_targets.view(-1, 4), 0, rpn_keep_pos)
+            rpn_bbox_pred = torch.index_select(rpn_bbox_pred, 0, pos_idx)
+            bbox_targets = torch.index_select(bbox_targets.view(-1, 4), 0, pos_idx)
             self.rpn_loss_box = smooth_l1_loss(rpn_bbox_pred,
                                                bbox_targets,
                                                beta=1./9,
-                                               theta=1./rpn_keep_pos.numel(),
                                                size_average=False)
             self.rpn_loss_box = self.rpn_loss_box / rpn_keep_all.numel()
             
