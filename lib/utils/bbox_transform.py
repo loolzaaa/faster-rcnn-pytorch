@@ -11,6 +11,8 @@ Regression coefficients:
 '''
 
 def bbox_transform_inv(boxes, deltas, weights=(1., 1., 1., 1.)):
+    weights = torch.Tensor(weights).to(deltas)
+
     widths = boxes[:, :, 2] - boxes[:, :, 0] + 1.0
     heights = boxes[:, :, 3] - boxes[:, :, 1] + 1.0
     ctr_x = boxes[:, :, 0] + 0.5 * widths
@@ -138,6 +140,8 @@ def bbox_overlaps_batch(anchors, gt_boxes):
     return overlaps
     
 def bbox_transform_batch(ex_rois, gt_rois, weights=(1., 1., 1., 1.)):
+    weights = torch.Tensor(weights).to(gt_rois)
+
     if ex_rois.dim() == 2:
         ex_widths = ex_rois[:, 2] - ex_rois[:, 0] + 1.0
         ex_heights = ex_rois[:, 3] - ex_rois[:, 1] + 1.0
