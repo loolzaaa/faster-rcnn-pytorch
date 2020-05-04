@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from config import cfg
 from model.rpn.rpn import _RPN
 from model.roi.roi_pool import ROIPool
+from model.roi.roi_align import ROIAlign
 from model.rpn.proposal_target_layer import _ProposalTargetLayer
 from utils.net_utils import smooth_l1_loss
 from utils.bbox_transform import bbox_transform_inv, clip_boxes
@@ -15,11 +16,17 @@ class FasterRCNN(nn.Module):
         self.class_agnostic = class_agnostic
         self.regression_weights = (10., 10., 5., 5.)
         
-        # define rpn
         self.RCNN_rpn = _RPN(out_depth)
+
         self.RCNN_proposal_target = _ProposalTargetLayer(self.regression_weights)
         
-        self.RCNN_roi_pool = ROIPool(1.0/16.0, cfg.GENERAL.POOLING_SIZE)
+        if cfg.GENERAL.POOLING_MODE == 'pool':
+            self.RCNN_roi_layer = ROIPool(1.0/16.0, cfg.GENERAL.POOLING_SIZE)
+        elif cfg.GENERAL.POOLING_MODE == 'align':
+            self.RCNN_roi_layer = ROIAlign(1.0/16.0, cfg.GENERAL.POOLING_SIZE, 0, True)
+        else:
+            raise ValueError('There is no implementation for "{}" ROI layer'
+                             .format(cfg.GENERAL.POOLING_MODE))
         
     def forward(self, im_data, im_info, gt_boxes):
         if self.training:
@@ -37,7 +44,7 @@ class FasterRCNN(nn.Module):
             rois_label = rois_label.view(-1).long()
             rois_target = rois_target.view(-1, rois_target.size(2))
             
-        pooled_feat = self.RCNN_roi_pool(base_feature, rois.view(-1,5))
+        pooled_feat = self.RCNN_roi_layer(base_feature, rois.view(-1,5))
         
         # feed pooled features to top model
         pooled_feat = self._feed_pooled_feature_to_top(pooled_feat)

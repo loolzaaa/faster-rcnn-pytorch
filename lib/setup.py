@@ -34,7 +34,7 @@ def get_extensions():
 
 setup(
     name='faster_rcnn_utils',
-    version='0.2',
+    version='0.3',
     description='Faster RCNN CPU/CUDA utilities',
     ext_modules=get_extensions(),
     cmdclass={

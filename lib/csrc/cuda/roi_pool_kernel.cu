@@ -1,121 +1,122 @@
 #include <torch/extension.h>
+#include <THC/THCAtomics.cuh>
 
-template <typename scalar_t>
-__global__ void roi_pool_forward_cuda_kernel(const int total_size,
-                                             const scalar_t *input,
-                                             const scalar_t *rois,
-                                             const scalar_t spatial_scale,
-                                             const int channels,
-                                             const int height,
-                                             const int width,
-                                             const int pooling_width,
-                                             const int pooling_height,
-                                             scalar_t *output,
-                                             int *argmax) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int total_threads = gridDim.x * blockDim.x;
-    for (int index = i; index < total_size; index += total_threads) {
-        // (N, C, point_h, point_w) is an element in the pooled output
-        int roi_point_w = index % pooling_width;
-        int roi_point_h = (index / pooling_width) % pooling_height;
-        int cur_roi_channel = (index / pooling_width / pooling_height) % channels;
-        int cur_roi = index / pooling_width / pooling_height / channels;
+#include "cuda_helpers.h"
 
-        const scalar_t *offset_rois = rois + cur_roi * 5;
-        int roi_batch_idx = offset_rois[0];
-        int roi_x1 = round(offset_rois[1] * spatial_scale);
-        int roi_y1 = round(offset_rois[2] * spatial_scale);
-        int roi_x2 = round(offset_rois[3] * spatial_scale);
-        int roi_y2 = round(offset_rois[4] * spatial_scale);
+template <typename T>
+__global__ void RoIPoolForward(
+    const int nthreads,
+    const T* input,
+    const T spatial_scale,
+    const int channels,
+    const int height,
+    const int width,
+    const int pooled_height,
+    const int pooled_width,
+    const T* rois,
+    T* output,
+    int* argmax_data) {
+  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+    // (n, c, ph, pw) is an element in the pooled output
+    int pw = index % pooled_width;
+    int ph = (index / pooled_width) % pooled_height;
+    int c = (index / pooled_width / pooled_height) % channels;
+    int n = index / pooled_width / pooled_height / channels;
 
-        // If width and height of roi are negative, force to 1
-        int roi_w = max(roi_x2 - roi_x1 + 1, 1);
-        int roi_h = max(roi_y2 - roi_y1 + 1, 1);
-        scalar_t bin_size_h = static_cast<scalar_t>(roi_h) 
-                                / static_cast<scalar_t>(pooling_height);
-        scalar_t bin_size_w = static_cast<scalar_t>(roi_w) 
-                                / static_cast<scalar_t>(pooling_width);
+    const T* offset_rois = rois + n * 5;
+    int roi_batch_ind = offset_rois[0];
+    int roi_start_w = round(offset_rois[1] * spatial_scale);
+    int roi_start_h = round(offset_rois[2] * spatial_scale);
+    int roi_end_w = round(offset_rois[3] * spatial_scale);
+    int roi_end_h = round(offset_rois[4] * spatial_scale);
 
-        int hstart = static_cast<int>(floor(bin_size_h * static_cast<scalar_t>(roi_point_h)));
-        int wstart = static_cast<int>(floor(bin_size_w * static_cast<scalar_t>(roi_point_w)));
-        int hend = static_cast<int>(ceil(bin_size_h * static_cast<scalar_t>(roi_point_h + 1)));
-        int wend = static_cast<int>(ceil(bin_size_w * static_cast<scalar_t>(roi_point_w + 1)));
+    // Force malformed ROIs to be 1x1
+    int roi_width = max(roi_end_w - roi_start_w + 1, 1);
+    int roi_height = max(roi_end_h - roi_start_h + 1, 1);
+    T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
+    T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
 
-        // Add roi offsets and clip to input boundaries
-        hstart = min(max(hstart + roi_y1, 0), height);
-        hend = min(max(hend + roi_y1, 0), height);
-        wstart = min(max(wstart + roi_x1, 0), width);
-        wend = min(max(wend + roi_x1, 0), width);
-        bool is_empty = (hend <= hstart) || (wend <= wstart);
+    int hstart = static_cast<int>(floor(static_cast<T>(ph) * bin_size_h));
+    int wstart = static_cast<int>(floor(static_cast<T>(pw) * bin_size_w));
+    int hend = static_cast<int>(ceil(static_cast<T>(ph + 1) * bin_size_h));
+    int wend = static_cast<int>(ceil(static_cast<T>(pw + 1) * bin_size_w));
 
-        // Define an empty pooling region to be zero
-        scalar_t maxval = is_empty ? 0 : -FLT_MAX;
-        // If nothing is pooled, argmax = -1 causes nothing to be backprop'd
-        int maxidx = -1;
-        const scalar_t *offset_data =
-            input + (roi_batch_idx * channels + cur_roi_channel) * height * width;
-        for (int h = hstart; h < hend; ++h) {
-          for (int w = wstart; w < wend; ++w) {
-            int bottom_index = h * width + w;
-            if (offset_data[bottom_index] > maxval) {
-              maxval = offset_data[bottom_index];
-              maxidx = bottom_index;
-            }
-          }
+    // Add roi offsets and clip to input boundaries
+    hstart = min(max(hstart + roi_start_h, 0), height);
+    hend = min(max(hend + roi_start_h, 0), height);
+    wstart = min(max(wstart + roi_start_w, 0), width);
+    wend = min(max(wend + roi_start_w, 0), width);
+    bool is_empty = (hend <= hstart) || (wend <= wstart);
+
+    // Define an empty pooling region to be zero
+    T maxval = is_empty ? 0 : -FLT_MAX;
+    // If nothing is pooled, argmax = -1 causes nothing to be backprop'd
+    int maxidx = -1;
+    const T* offset_input =
+        input + (roi_batch_ind * channels + c) * height * width;
+    for (int h = hstart; h < hend; ++h) {
+      for (int w = wstart; w < wend; ++w) {
+        int input_index = h * width + w;
+        if (offset_input[input_index] > maxval) {
+          maxval = offset_input[input_index];
+          maxidx = input_index;
         }
-        output[index] = maxval;
-        argmax[index] = maxidx;
+      }
     }
+    output[index] = maxval;
+    argmax_data[index] = maxidx;
+  }
 }
 
-template <typename scalar_t>
-__global__ void roi_pool_backward_cuda_kernel(const int total_size,
-                                              const scalar_t *grad_output,
-                                              const int *argmax,
-                                              const int batch_size,
-                                              const int channels,
-                                              const int height,
-                                              const int width,
-                                              const int pooling_width,
-                                              const int pooling_height,
-                                              scalar_t *grad_input,
-                                              const scalar_t *rois) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int total_threads = gridDim.x * blockDim.x;
-    for (int index = i; index < total_size; index += total_threads) {
-        // (N, C, point_h, point_w) is an element in the pooled output
-        int roi_point_w = index % pooling_width;
-        int roi_point_h = (index / pooling_width) % pooling_height;
-        int cur_roi_channel = (index / pooling_width / pooling_height) % channels;
-        int cur_roi = index / pooling_width / pooling_height / channels;
-        
-        int output_offset = (cur_roi * channels + cur_roi_channel) * pooling_height * pooling_width;
-        const scalar_t *grad_output_offset = grad_output + output_offset;
-        const int *argmax_offset = argmax + output_offset;
-        
-        //int total_rois = total_size / pooling_width / pooling_height / channels;
-        //int roi_batch_idx = cur_roi / (total_rois / batch_size);
-        //int input_offset = (roi_batch_idx * channels + cur_roi_channel) * height * width;
-        //scalar_t *grad_input_offset = grad_input + input_offset;
-        const scalar_t *offset_rois = rois + cur_roi * 5;
-        int roi_batch_ind = offset_rois[0];
-        int input_offset = (roi_batch_ind * channels + cur_roi_channel) * height * width;
-        scalar_t *grad_input_offset = grad_input + input_offset;
-        
-        int argmax_value = argmax_offset[roi_point_h * pooling_width + roi_point_w];
-        if (argmax_value != -1) {
-            atomicAdd(
-                grad_input_offset + argmax_value,
-                static_cast<scalar_t>(grad_output_offset[roi_point_h * pooling_width + roi_point_w])
-            );
-        }
+template <typename T>
+__global__ void RoIPoolBackward(
+    const int nthreads,
+    const T* grad_output,
+    const int* argmax_data,
+    const int channels,
+    const int height,
+    const int width,
+    const int pooled_height,
+    const int pooled_width,
+    T* grad_input,
+    const T* rois,
+    const int n_stride,
+    const int c_stride,
+    const int h_stride,
+    const int w_stride) {
+  CUDA_1D_KERNEL_LOOP(index, nthreads) {
+    // (n, c, ph, pw) is an element in the pooled output
+    int pw = index % pooled_width;
+    int ph = (index / pooled_width) % pooled_height;
+    int c = (index / pooled_width / pooled_height) % channels;
+    int n = index / pooled_width / pooled_height / channels;
+
+    const T* offset_rois = rois + n * 5;
+    int roi_batch_ind = offset_rois[0];
+    T* grad_input_offset =
+        grad_input + ((roi_batch_ind * channels + c) * height * width);
+
+    int output_offset = n * n_stride + c * c_stride;
+    const int* argmax_data_offset =
+        argmax_data + (n * channels + c) * pooled_height * pooled_width;
+    int argmax = argmax_data_offset[ph * pooled_width + pw];
+
+    if (argmax != -1) {
+      atomicAdd(
+          grad_input_offset + argmax,
+          static_cast<T>(
+              grad_output[output_offset + ph * h_stride + pw * w_stride]));
     }
+  }
 }
 
-std::tuple<torch::Tensor, torch::Tensor> roi_pool_forward_cuda(const torch::Tensor input, 
-                                                               const torch::Tensor rois, 
+std::tuple<torch::Tensor, torch::Tensor> roi_pool_forward_cuda(const torch::Tensor& input, 
+                                                               const torch::Tensor& rois, 
                                                                const float spatial_scale,
                                                                const int output_size) {
+    AT_ASSERTM(input.is_cuda(), "input must be a CUDA tensor");
+    AT_ASSERTM(rois.is_cuda(), "rois must be a CUDA tensor");
+    
     const int num_rois = rois.size(0);
     const int channels = input.size(1);
     const int height = input.size(2);
@@ -126,69 +127,93 @@ std::tuple<torch::Tensor, torch::Tensor> roi_pool_forward_cuda(const torch::Tens
     
     const auto total_size = num_rois * pooling_height * pooling_width * channels;
     
-    auto output = torch::empty({num_rois, channels, pooling_height, pooling_width}, 
-                               input.options());
-    auto argmax = torch::zeros({num_rois, channels, pooling_height, pooling_width}, 
-                               input.options().dtype(torch::kInt));
+    auto output = torch::empty(
+        {num_rois, channels, pooling_height, pooling_width}, input.options());
+    auto argmax = torch::zeros(
+        {num_rois, channels, pooling_height, pooling_width},
+        input.options().dtype(torch::kInt));
     
-    const dim3 blocks(std::min((total_size + 512 - 1) / 512, 4096));
-    const dim3 threads(512);
-    
-    AT_DISPATCH_FLOATING_TYPES(input.type(), "roi_pool_forward_cuda", ([&] {
-        roi_pool_forward_cuda_kernel<scalar_t><<<blocks, threads>>>(
+    const dim3 grid(std::min((total_size + 512 - 1) / 512, 4096));
+    const dim3 block(512);
+
+    if (output.numel() == 0) {
+        return std::make_tuple(output, argmax);
+    }
+
+    AT_DISPATCH_FLOATING_TYPES_AND_HALF(input.scalar_type(), "RoIPool_forward", [&] {
+        RoIPoolForward<scalar_t><<<grid, block>>>(
             total_size,
-            input.data<scalar_t>(),
-            rois.data<scalar_t>(),
+            input.contiguous().data_ptr<scalar_t>(),
             spatial_scale,
             channels,
             height,
             width,
             pooling_width,
             pooling_height,
-            output.data<scalar_t>(),
-            argmax.data<int>());
-    }));
-    
+            rois.contiguous().data_ptr<scalar_t>(),
+            output.data_ptr<scalar_t>(),
+            argmax.data_ptr<int>());
+    });
+
     return std::make_tuple(output, argmax);
 }
 
-torch::Tensor roi_pool_backward_cuda(const torch::Tensor grad_output, 
-                                     const torch::Tensor argmax, 
-                                     const torch::Tensor input_size,
-                                     const torch::Tensor rois) {    
+torch::Tensor roi_pool_backward_cuda(const torch::Tensor& grad, 
+                                     const torch::Tensor& argmax, 
+                                     const torch::Tensor& input_size,
+                                     const torch::Tensor& rois) {
+    // Check if input tensors are CUDA tensors
+    AT_ASSERTM(grad.is_cuda(), "grad must be a CUDA tensor");
+    AT_ASSERTM(rois.is_cuda(), "rois must be a CUDA tensor");
+    AT_ASSERTM(argmax.is_cuda(), "argmax must be a CUDA tensor");
+
     auto input_size_a = input_size.accessor<int,1>();
     const int batch_size = input_size_a[0];
     const int channels = input_size_a[1];
     const int height = input_size_a[2];
     const int width = input_size_a[3];
-    
+
     const int num_rois = argmax.size(0);
     
     const int pooling_width = argmax.size(3);
     const int pooling_height = argmax.size(2);
-    
+
     const auto total_size = num_rois * pooling_height * pooling_width * channels;
     
-    auto grad_input = torch::zeros({batch_size, channels, height, width}, 
-                                   grad_output.options());
+    auto grad_input = 
+        torch::zeros({batch_size, channels, height, width}, grad.options());
     
-    const dim3 blocks(std::min((total_size + 512 - 1) / 512, 4096));
-    const dim3 threads(512);
+    const dim3 grid(std::min((total_size + 512 - 1) / 512, 4096));
+    const dim3 block(512);
+
+    // handle possibly empty gradients
+    if (grad.numel() == 0) {
+        return grad_input;
+    }
+
+    // get stride values to ensure indexing into gradients is correct.
+    int n_stride = grad.stride(0);
+    int c_stride = grad.stride(1);
+    int h_stride = grad.stride(2);
+    int w_stride = grad.stride(3);
     
-    AT_DISPATCH_FLOATING_TYPES(grad_output.type(), "roi_pool_backward_cuda", ([&] {
-        roi_pool_backward_cuda_kernel<scalar_t><<<blocks, threads>>>(
-            total_size,
-            grad_output.data<scalar_t>(),
-            argmax.data<int>(),
-            batch_size,
+    AT_DISPATCH_FLOATING_TYPES_AND_HALF(grad.scalar_type(), "RoIPool_backward", [&] {
+        RoIPoolBackward<scalar_t><<<grid, block>>>(
+            grad.numel(),
+            grad.data_ptr<scalar_t>(),
+            argmax.contiguous().data_ptr<int>(),
             channels,
             height,
             width,
             pooling_width,
             pooling_height,
-            grad_input.data<scalar_t>(),
-            rois.data<scalar_t>());
-    }));
-    
+            grad_input.data_ptr<scalar_t>(),
+            rois.contiguous().data_ptr<scalar_t>(),
+            n_stride,
+            c_stride,
+            h_stride,
+            w_stride);
+    });
+
     return grad_input;
 }

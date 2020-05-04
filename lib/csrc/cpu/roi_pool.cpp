@@ -109,8 +109,8 @@ void roi_pool_backward(const T* grad_output,
     } // num_rois
 }
 
-std::tuple<torch::Tensor, torch::Tensor> roi_pool_forward_cpu(const torch::Tensor input,
-                                                              const torch::Tensor rois,
+std::tuple<torch::Tensor, torch::Tensor> roi_pool_forward_cpu(const torch::Tensor& input,
+                                                              const torch::Tensor& rois,
                                                               const float spatial_scale,
                                                               const int output_size) {
     AT_ASSERTM(input.device().is_cpu(), "input must be a CPU tensor");
@@ -121,38 +121,40 @@ std::tuple<torch::Tensor, torch::Tensor> roi_pool_forward_cpu(const torch::Tenso
     int height = input.size(2);
     int width = input.size(3);
 
+    const int pooling_width = output_size;
+    const int pooling_height = output_size;
+
     torch::Tensor output = torch::zeros(
-        {num_rois, channels, output_size, output_size}, input.options());
-    torch::Tensor argmax = at::zeros(
-        {num_rois, channels, output_size, output_size},
+        {num_rois, channels, pooling_height, pooling_width}, input.options());
+    torch::Tensor argmax = torch::zeros(
+        {num_rois, channels, pooling_height, pooling_width},
         input.options().dtype(at::kInt));
 
     if (output.numel() == 0) {
         return std::make_tuple(output, argmax);
     }
 
-    AT_DISPATCH_FLOATING_TYPES_AND_HALF(
-        input.scalar_type(), "roi_pool_forward", [&] {
-            roi_pool_forward<scalar_t>(
-                input.contiguous().data_ptr<scalar_t>(),
-                spatial_scale,
-                channels,
-                height,
-                width,
-                output_size,
-                rois.contiguous().data_ptr<scalar_t>(),
-                num_rois,
-                output.data_ptr<scalar_t>(),
-                argmax.data_ptr<int>());
-        });
+    AT_DISPATCH_FLOATING_TYPES_AND_HALF(input.scalar_type(), "RoIPool_forward", [&] {
+        roi_pool_forward<scalar_t>(
+            input.contiguous().data_ptr<scalar_t>(),
+            spatial_scale,
+            channels,
+            height,
+            width,
+            output_size,
+            rois.contiguous().data_ptr<scalar_t>(),
+            num_rois,
+            output.data_ptr<scalar_t>(),
+            argmax.data_ptr<int>());
+    });
 
     return std::make_tuple(output, argmax);
 }
 
-torch::Tensor roi_pool_backward_cpu(const torch::Tensor grad,
-                                    const torch::Tensor argmax,
-                                    const torch::Tensor input_size,
-                                    const torch::Tensor rois) {
+torch::Tensor roi_pool_backward_cpu(const torch::Tensor& grad,
+                                    const torch::Tensor& argmax,
+                                    const torch::Tensor& input_size,
+                                    const torch::Tensor& rois) {
     // Check if input tensors are CPU tensors
     AT_ASSERTM(grad.device().is_cpu(), "grad must be a CPU tensor");
     AT_ASSERTM(rois.device().is_cpu(), "rois must be a CPU tensor");
@@ -164,7 +166,7 @@ torch::Tensor roi_pool_backward_cpu(const torch::Tensor grad,
     const int height = input_size_a[2];
     const int width = input_size_a[3];
 
-    const int num_rois = rois.size(0);
+    const int num_rois = argmax.size(0);
 
     const int pooled_width = argmax.size(3);
     const int pooled_height = argmax.size(2);
@@ -183,24 +185,23 @@ torch::Tensor roi_pool_backward_cpu(const torch::Tensor grad,
     int h_stride = grad.stride(2);
     int w_stride = grad.stride(3);
 
-    AT_DISPATCH_FLOATING_TYPES_AND_HALF(
-        grad.scalar_type(), "roi_pool_backward", [&] {
-            roi_pool_backward<scalar_t>(
-                grad.data_ptr<scalar_t>(),
-                argmax.data_ptr<int>(),
-                num_rois,
-                channels,
-                height,
-                width,
-                pooled_height,
-                pooled_width,
-                grad_input.data_ptr<scalar_t>(),
-                rois.contiguous().data_ptr<scalar_t>(),
-                n_stride,
-                c_stride,
-                h_stride,
-                w_stride);
-        });
+    AT_DISPATCH_FLOATING_TYPES_AND_HALF(grad.scalar_type(), "RoIPool_backward", [&] {
+        roi_pool_backward<scalar_t>(
+            grad.data_ptr<scalar_t>(),
+            argmax.data_ptr<int>(),
+            num_rois,
+            channels,
+            height,
+            width,
+            pooled_height,
+            pooled_width,
+            grad_input.data_ptr<scalar_t>(),
+            rois.contiguous().data_ptr<scalar_t>(),
+            n_stride,
+            c_stride,
+            h_stride,
+            w_stride);
+    });
 
     return grad_input;
 }

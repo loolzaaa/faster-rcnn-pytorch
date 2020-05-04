@@ -1,6 +1,6 @@
 # A PyTorch implementation of Faster R-CNN
 This implementation of Faster R-CNN network based on PyTorch 1.0 branch of [jwyang/faster-rcnn.pytorch](https://github.com/jwyang/faster-rcnn.pytorch/tree/pytorch-1.0). However, there are some differences in this version:
-* Full performance on CPU (ROI Pooling, NMS implemented on C++ [*thanks, PyTorch team*])
+* Full performance on CPU (ROI Pooling, ROI Align, NMS implemented on C++ [*thanks, PyTorch team*])
 * Multi image batch training based on `collate_fn` function of PyTorch
 * Using models from model zoo of torchvision as backbones (VGG16, ResNet[all versions] available)
 * More friendly CLI for training, test or detect
@@ -8,10 +8,11 @@ This implementation of Faster R-CNN network based on PyTorch 1.0 branch of [jwya
 * Add abstractions for easy add new datasets, backbones, visualize tools
 ### TODOs:
 - [x] Add support for multi GPU training
-- [ ] Add another pooling layers
+- [x] Add another pooling layers (ROI Align)
 - [x] Add paramater for color mode of pretrained weights
 - [ ] Add config load file parameter (with refresh already defined parameters)
 - [ ] Add webcam mode of detection
+- [ ] Add approximation line in standart plotter
 - [ ] Add PyTorch 1.5.0 support
 ### Tutorial:
 [Blog](http://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns) by [ankur6ue](https://github.com/ankur6ue)
@@ -19,7 +20,7 @@ This implementation of Faster R-CNN network based on PyTorch 1.0 branch of [jwya
 |**Learning rate**: 0.001 (1e-3)|**LR Decay**: 5|**Optimizer**: SGD|
 |-----------|------------|------------|
 
-All results were obtained on *Pascal VOC 2007* (min scale = 600) with *NVIDIA GeForce GTX1060 (6GB)*:
+All results were obtained on *Pascal VOC 2007* (min scale = 600, **ROI Pool**) with *NVIDIA GeForce GTX1060 (6GB)*:
 |Backbone|Batch size|Max epoch|mAP|
 |-------|-------|-------|-------|
 |VGG16|1|6|70.9%|
@@ -33,6 +34,7 @@ Clone this repo and create `data` folder in it:
 git clone https://github.com/loolzaaa/faster-rcnn-pytorch.git
 cd faster-rcnn-pytorch && mkdir data
 ```
+
 ### Prerequisites
 - Python 3.5+
 - PyTorch 1.3+
@@ -40,7 +42,7 @@ cd faster-rcnn-pytorch && mkdir data
 - Other libraries in [this gist (Conda environment)](https://gist.github.com/loolzaaa/fdbc406d281db9dc0a723536a41679d6)
 
 ### Compilation
-Compile all python extensions (NMS, ROI Pooling) for CPU and CUDA with next commands:
+Compile all python extensions (NMS, ROI layers) for CPU and CUDA with next commands:
 ```
 cd lib
 python setup.py develop
