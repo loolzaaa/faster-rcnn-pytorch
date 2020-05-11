@@ -50,10 +50,10 @@ parser_train.add_argument('-lrds', '--lr_decay_step', type=int, default=None,
 parser_train.add_argument('-lrdg', '--lr_decay_gamma', type=float, default=None,
                           help='learning rate decay ratio')
 parser_train.add_argument('-p', '--pretrain', action='store_true',
-                          help='load weigths from checkpoint or not'
+                          help='load weigths from checkpoint or not '
                           + 'Need to set SESSION and EPOCH')
 parser_train.add_argument('-r', '--resume', action='store_true',
-                          help='resume training from checkpoint or not'
+                          help='resume training from checkpoint or not '
                           + 'Need to set SESSION and EPOCH')
 parser_train.add_argument('-te', '--total_epoch', type=int, default=20,
                           help='total number of epochs for training')

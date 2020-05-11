@@ -10,7 +10,7 @@ This implementation of Faster R-CNN network based on PyTorch 1.0 branch of [jwya
 - [x] Add support for multi GPU training
 - [x] Add another pooling layers (ROI Align)
 - [x] Add paramater for color mode of pretrained weights
-- [ ] Add config load file parameter (with refresh already defined parameters)
+- [x] Add config load file parameter (with refresh already defined parameters)
 - [ ] Add webcam mode of detection
 - [ ] Add approximation line in standart plotter
 - [ ] Add PyTorch 1.5.0 support
@@ -21,11 +21,13 @@ This implementation of Faster R-CNN network based on PyTorch 1.0 branch of [jwya
 |-----------|------------|------------|
 
 All results were obtained on *Pascal VOC 2007* (min scale = 600, **ROI Pool**) with *NVIDIA GeForce GTX1060 (6GB)*:
-|Backbone|Batch size|Max epoch|mAP|
-|-------|-------|-------|-------|
-|VGG16|1|6|70.9%|
-|ResNet50|2|7|73.1%|
-|ResNet101|1|6|74.5%|
+|Backbone|Batch size|Max epoch|mAP|Preset|
+|-------|-------|-------|-------|-------|
+|VGG16|1|6|70.9%|Caffe|
+|[ResNet18](https://drive.google.com/open?id=1pfbmEu814M73ccLfWznku_6XsPY5ibnK)|2|8|62.4%|PyTorch|
+|[ResNet34](https://drive.google.com/open?id=1fQDpswYfhbUtHMFIsE_Ery8-vp3e25M-)|2|8|70.8%|PyTorch|
+|[ResNet50](https://drive.google.com/open?id=1BBMELwe3iGutc17YGSwo_5FRMbXZ_MOa)|2|6|72.6%|Caffe|
+|[ResNet101](https://drive.google.com/open?id=1GkWpc3G7T8tDJWhW94gjjLywykewhpLx)|1|6|75.1%|Caffe|
 
 ---
 ## Preparation
@@ -49,7 +51,7 @@ python setup.py develop
 ```
 
 ### Pretrained model
-1. [Download](https://drive.google.com/open?id=1n2hWpTEWe3LwfOYq0VUslok-EmdqrMQP) caffe BGR pretrained models
+1. Download caffe BGR pretrained models ([link](https://drive.google.com/open?id=1n2hWpTEWe3LwfOYq0VUslok-EmdqrMQP)) or PyTorch RGB pretrained models ([link](https://drive.google.com/drive/folders/1P4Q9jtsMB9C47l7imseK5JlTpgMX1pFh?usp=sharing))
 2. Put them into `data/pretrained_model/`
 
 **NOTE:** Please, remember that this network use caffe (*BGR color mode*) pretrained model **by default**. If you want to use PyTorch pretrained models, you must specify *RGB* color mode, image range = [0, 1], *mean = [0.485, 0.456, 0.406]* and *std = [0.229, 0.224, 0.225]* in additional parameters for run script. For example:

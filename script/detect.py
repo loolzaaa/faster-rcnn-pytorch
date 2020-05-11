@@ -6,7 +6,7 @@ import cv2 as cv
 import torch
 import dataset.dataset_factory as dataset_factory
 from colorama import Back, Fore
-from config import cfg
+from config import cfg, update_config_from_file
 from torch.utils.data import DataLoader
 from dataset.collate import collate_test
 from model.vgg16 import VGG16
@@ -18,6 +18,9 @@ def detect(dataset, net, class_agnostic, load_dir, session, epoch, vis,
            image_dir, add_params):
     device = torch.device('cuda:0') if cfg.CUDA else torch.device('cpu')
     print(Back.CYAN + Fore.BLACK + 'Current device: %s' % (str(device).upper()))
+
+    if 'cfg_file' in add_params:
+        update_config_from_file(add_params['cfg_file'])
 
     print(Back.WHITE + Fore.BLACK + 'Using config:')
     print('GENERAL:')

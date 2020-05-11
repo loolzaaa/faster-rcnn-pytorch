@@ -1,3 +1,4 @@
+import os
 from easydict import EasyDict as edict
 
 cfg = edict()
@@ -50,3 +51,36 @@ cfg.TEST.NMS = 0.3
 
 cfg.RESNET = edict()
 cfg.RESNET.NUM_FREEZE_BLOCKS = 1
+
+
+def update_config_from_file(config_file_path):
+    config_path = os.path.join(cfg.ROOT_DIR, config_file_path)
+    assert os.path.exists(config_path), 'Config file does not exist'
+
+    import yaml
+    with open(config_path, 'r') as f:
+        yaml_cfg = edict(yaml.load(f))
+
+    _merge_configs(yaml_cfg, cfg)
+
+
+def _merge_configs(a, b):
+    assert type(a) is edict, 'Config file must be edict'
+
+    for k, v in a.items():
+        if k not in b:
+            raise KeyError('{} is not a valid config key'.format(k))
+
+        if type(b[k]) is not type(a[k]):
+            raise ValueError(('Type mismatch ({} vs. {}) '
+                              + 'for config key: {}').format(type(b[k]),
+                                                             type(v), k))
+
+        if type(v) is edict:
+            try:
+                _merge_configs(a[k], b[k])
+            except:
+                print(('Error under config key: {}'.format(k)))
+                raise
+        else:
+            b[k] = v

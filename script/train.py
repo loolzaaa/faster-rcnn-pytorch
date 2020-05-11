@@ -4,7 +4,7 @@ import pprint
 import torch
 import dataset.dataset_factory as dataset_factory
 from colorama import Back, Fore
-from config import cfg
+from config import cfg, update_config_from_file
 from torch.utils.data import DataLoader
 from torch.optim import SGD, Adam
 from torch.optim.lr_scheduler import StepLR
@@ -28,6 +28,9 @@ def train(dataset, net, batch_size, learning_rate, optimizer, lr_decay_step,
         cfg.TRAIN.LR_DECAY_STEP = lr_decay_step
     if lr_decay_gamma is not None:
         cfg.TRAIN.LR_DECAY_GAMMA = lr_decay_gamma
+
+    if 'cfg_file' in add_params:
+        update_config_from_file(add_params['cfg_file'])
 
     print(Back.WHITE + Fore.BLACK + 'Using config:')
     print('GENERAL:')
