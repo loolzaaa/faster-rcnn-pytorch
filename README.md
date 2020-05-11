@@ -11,8 +11,8 @@ This implementation of Faster R-CNN network based on PyTorch 1.0 branch of [jwya
 - [x] Add another pooling layers (ROI Align)
 - [x] Add paramater for color mode of pretrained weights
 - [x] Add config load file parameter (with refresh already defined parameters)
+- [x] Add approximation line in standart plotter
 - [ ] Add webcam mode of detection
-- [ ] Add approximation line in standart plotter
 - [ ] Add PyTorch 1.5.0 support
 ### Tutorial:
 [Blog](http://www.telesens.co/2018/03/11/object-detection-and-classification-using-r-cnns) by [ankur6ue](https://github.com/ankur6ue)

@@ -1,10 +1,12 @@
+import numpy as np
 import matplotlib.pyplot as plt
+
 
 class StandartPlotter():
     def __init__(self, figsize=(12, 7.5), grid_size_y=7):
         self.figsize = figsize
         assert (grid_size_y - 1) % 2 == 0 and grid_size_y >= 3, \
-               'Grid size of Y axis must be odd number'
+            'Grid size of Y axis must be odd number'
         self.grid_size_y = grid_size_y
 
         self.x = []
@@ -14,11 +16,11 @@ class StandartPlotter():
         self.rpn_cls_y = []
         self.rpn_bbox_y = []
         self.rcnn_cls_y = []
-        self.rcnn_bbox_y = []        
+        self.rcnn_bbox_y = []
 
     def start(self, pipe):
         self.pipe = pipe
-        self.fig = plt.figure(figsize=self.figsize)        
+        self.fig = plt.figure(figsize=self.figsize)
         self.grid_spec = self.fig.add_gridspec(self.grid_size_y, 4)
         _half_grid = int((self.grid_size_y - 1) / 2) + 1
 
@@ -27,7 +29,7 @@ class StandartPlotter():
         self.ax_rpn_cls = self.fig.add_subplot(self.grid_spec[1:_half_grid, 2])
         self.ax_rpn_bbox = self.fig.add_subplot(self.grid_spec[1:_half_grid, 3])
         self.ax_rcnn_cls = self.fig.add_subplot(self.grid_spec[_half_grid:, 2])
-        self.ax_rcnn_bbox = self.fig.add_subplot(self.grid_spec[_half_grid:, 3])        
+        self.ax_rcnn_bbox = self.fig.add_subplot(self.grid_spec[_half_grid:, 3])
 
         self._prepare_axes()
         self.grid_spec.tight_layout(self.fig)
@@ -67,7 +69,16 @@ class StandartPlotter():
 
         self._prepare_axes()
 
-        self.ax_main_loss.plot(self.x, self.main_y, 'r-') 
+        if len(self.x) > 4:
+            r = int(len(self.x) / 2)
+            p = np.poly1d(np.polyfit(self.x[-r:], self.main_y[-r:], 1))
+            hx = np.array([self.x[0], self.x[-1]])
+            hy = np.array([p(self.x[-1]), p(self.x[-1])])
+            self.ax_main_loss.plot(self.x, self.main_y, 'r-',
+                                   self.x[-r:], p(self.x[-r:]), 'b-',
+                                   hx, hy, '--k')
+        else:
+            self.ax_main_loss.plot(self.x, self.main_y, 'r-')
         self._update_value(self.ax_main_loss, self.main_y[-1], 16)
 
         self.ax_rpn_cls.plot(self.x, self.rpn_cls_y, 'r-')
@@ -81,13 +92,18 @@ class StandartPlotter():
 
         self.ax_rcnn_bbox.plot(self.x, self.rcnn_bbox_y, 'r-')
         self._update_value(self.ax_rcnn_bbox, self.rcnn_bbox_y[-1], 12)
-        
+
         text_size = (self.figsize[1] / self.grid_size_y) * 16
-        self.ax_info.text(1, 33, 'Session: {:2d}'.format(data['session']), fontsize=text_size)
-        self.ax_info.text(30, 33, 'Epoch: {:2d}/{:2d}'.format(data['current_epoch'], data['total_epoch']), fontsize=text_size)
-        self.ax_info.text(62, 33, 'Iteration: {:4d}/{:4d}'.format(data['current_iter'], data['total_iter']), fontsize=text_size)
-        self.ax_info.text(120, 33, 'LR: {:.2e}'.format(data['lr']), fontsize=text_size)
-        self.ax_info.text(158, 33, 'Time cost: {:4.2f}s'.format(data['time_cost']), fontsize=text_size)
+        self.ax_info.text(1, 33, 'Session: {:2d}'.format(
+            data['session']), fontsize=text_size)
+        self.ax_info.text(30, 33, 'Epoch: {:2d}/{:2d}'.format(
+            data['current_epoch'], data['total_epoch']), fontsize=text_size)
+        self.ax_info.text(62, 33, 'Iteration: {:4d}/{:4d}'.format(
+            data['current_iter'], data['total_iter']), fontsize=text_size)
+        self.ax_info.text(120, 33, 'LR: {:.2e}'.format(
+            data['lr']), fontsize=text_size)
+        self.ax_info.text(158, 33, 'Time cost: {:4.2f}s'.format(
+            data['time_cost']), fontsize=text_size)
 
     def _save_figure(self, path):
         plt.savefig(path)
