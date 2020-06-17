@@ -1,3 +1,4 @@
+#include <float.h>
 #include <torch/extension.h>
 
 template <class T>
